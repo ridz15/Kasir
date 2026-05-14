@@ -1,12 +1,20 @@
 # Mooncake 94
 
-Aplikasi kasir lokal untuk toko bakery satu cabang. Versi awal ini berjalan langsung di browser tanpa hosting dan menyimpan data di browser komputer kasir.
+Aplikasi kasir lokal untuk toko bakery satu cabang. Aplikasi berjalan dari PC kasir, bisa dibuka dari HP/tablet di WiFi yang sama, dan menyimpan data utama di SQLite lokal.
 
 ## Cara menjalankan
 
 1. Klik dua kali file `Jalankan Mooncake 94.bat`.
 2. Browser akan terbuka otomatis ke aplikasi Mooncake 94.
 3. Jika tidak terbuka otomatis, buka `http://127.0.0.1:4173`.
+
+Data aplikasi tersimpan di:
+
+```text
+data/mooncake94.db
+```
+
+File database ini bersifat lokal dan tidak ikut di-push ke GitHub.
 
 ## Buka dari HP atau tablet
 
@@ -18,7 +26,7 @@ Aplikasi kasir lokal untuk toko bakery satu cabang. Versi awal ini berjalan lang
 
 Jika Windows Firewall muncul, pilih `Allow access` untuk jaringan private.
 
-Catatan: versi ini masih menyimpan data di browser masing-masing perangkat. Untuk data yang benar-benar satu sumber antara PC dan HP/tablet, penyimpanan perlu ditingkatkan ke database/server lokal.
+Catatan: PC kasir harus tetap menyala karena PC menjadi server lokal dan pusat database.
 
 Cara alternatif:
 
@@ -39,4 +47,6 @@ Cara alternatif:
 
 ## Catatan data
 
-Data tersimpan lokal di browser memakai `localStorage`. Ini cocok untuk tahap awal satu cabang tanpa server. Saat sudah butuh multi cabang, dashboard online, atau login serius, struktur data ini bisa dipindahkan ke backend dan database server.
+Saat aplikasi dibuka lewat `Jalankan Mooncake 94.bat`, data tersimpan di SQLite lokal. Jika file `index.html` dibuka langsung tanpa server, aplikasi masih bisa berjalan dengan penyimpanan browser sebagai fallback, tetapi mode utama yang disarankan adalah lewat launcher.
+
+Tetap lakukan `Backup Data` secara rutin, terutama setelah tutup toko.

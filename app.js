@@ -9,7 +9,9 @@ const defaultProducts = [
   { id: createId(), name: "Kopi Susu", category: "Minuman", price: 12000, stock: 25, minStock: 6 }
 ];
 
-let state = loadState();
+const API_ENABLED = location.protocol === "http:" || location.protocol === "https:";
+
+let state = getInitialState();
 let cart = [];
 let activeView = "cashier";
 let currentDayKey = todayKey();
@@ -57,7 +59,16 @@ const els = {
   toast: document.getElementById("toast")
 };
 
-function loadState() {
+function getInitialState() {
+  return {
+    branchName: "Cabang Utama",
+    products: [],
+    deletedCategories: [],
+    transactions: []
+  };
+}
+
+function loadLocalState() {
   const saved = localStorage.getItem(STORAGE_KEY);
   if (!saved) {
     return {
@@ -88,6 +99,35 @@ function loadState() {
 
 function saveState() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+}
+
+async function loadState() {
+  if (!API_ENABLED) {
+    state = loadLocalState();
+    return;
+  }
+
+  try {
+    state = await apiRequest("/api/state");
+  } catch {
+    state = loadLocalState();
+    showToast("Server database belum terbaca, sementara memakai data browser ini.");
+  }
+}
+
+async function apiRequest(path, options = {}) {
+  const response = await fetch(path, {
+    ...options,
+    headers: {
+      "Content-Type": "application/json",
+      ...(options.headers || {})
+    }
+  });
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data.error || "Terjadi kesalahan server.");
+  }
+  return data;
 }
 
 function createId() {
@@ -127,7 +167,22 @@ function formatDateTime(value) {
 }
 
 function todayKey(date = new Date()) {
-  return date.toISOString().slice(0, 10);
+  const localDate = new Date(date);
+  const year = localDate.getFullYear();
+  const month = String(localDate.getMonth() + 1).padStart(2, "0");
+  const day = String(localDate.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function localTimestampKey(date = new Date()) {
+  const localDate = new Date(date);
+  const year = localDate.getFullYear();
+  const month = String(localDate.getMonth() + 1).padStart(2, "0");
+  const day = String(localDate.getDate()).padStart(2, "0");
+  const hours = String(localDate.getHours()).padStart(2, "0");
+  const minutes = String(localDate.getMinutes()).padStart(2, "0");
+  const seconds = String(localDate.getSeconds()).padStart(2, "0");
+  return `${year}${month}${day}${hours}${minutes}${seconds}`;
 }
 
 function getProduct(id) {
@@ -318,7 +373,7 @@ function renderHistory() {
 
 function renderReports() {
   const today = todayKey();
-  const todayTransactions = state.transactions.filter((transaction) => transaction.createdAt.slice(0, 10) === today);
+  const todayTransactions = state.transactions.filter((transaction) => todayKey(transaction.createdAt) === today);
   const revenue = todayTransactions.reduce((sum, transaction) => sum + transaction.total, 0);
   const itemsSold = todayTransactions.reduce((sum, transaction) => {
     return sum + transaction.items.reduce((itemSum, item) => itemSum + item.qty, 0);
@@ -340,7 +395,7 @@ function renderRevenueChart() {
     date.setDate(date.getDate() - (6 - index));
     const key = todayKey(date);
     const revenue = state.transactions
-      .filter((transaction) => transaction.createdAt.slice(0, 10) === key)
+      .filter((transaction) => todayKey(transaction.createdAt) === key)
       .reduce((sum, transaction) => sum + transaction.total, 0);
     return { date, key, revenue };
   });
@@ -450,7 +505,7 @@ function updateCartItem(productId, action) {
   renderCart();
 }
 
-function finishTransaction() {
+async function finishTransaction() {
   const total = cartTotal();
   const cash = parseMoneyInput(els.cashReceived.value);
 
@@ -473,14 +528,9 @@ function finishTransaction() {
     return;
   }
 
-  cart.forEach((item) => {
-    const product = getProduct(item.id);
-    product.stock -= item.qty;
-  });
-
   const transaction = {
     id: createId(),
-    receiptNumber: `TRX-${new Date().toISOString().replace(/\D/g, "").slice(0, 14)}`,
+    receiptNumber: `TRX-${localTimestampKey()}`,
     branchName: state.branchName,
     createdAt: new Date().toISOString(),
     items: cart.map((item) => ({ ...item })),
@@ -489,12 +539,30 @@ function finishTransaction() {
     change: cash - total
   };
 
-  state.transactions.push(transaction);
-  saveState();
+  if (API_ENABLED) {
+    try {
+      state = await apiRequest("/api/transactions", {
+        method: "POST",
+        body: JSON.stringify(transaction)
+      });
+    } catch (error) {
+      showToast(error.message);
+      return;
+    }
+  } else {
+    cart.forEach((item) => {
+      const product = getProduct(item.id);
+      product.stock -= item.qty;
+    });
+    state.transactions.push(transaction);
+    saveState();
+  }
+
   cart = [];
   els.cashReceived.value = "";
   render();
-  printReceipt(transaction);
+  const savedTransaction = state.transactions.find((item) => item.id === transaction.id) || transaction;
+  printReceipt(savedTransaction);
   showToast("Transaksi selesai dan stok otomatis berkurang.");
 }
 
@@ -550,7 +618,7 @@ function printReceipt(transaction) {
   receiptWindow.document.close();
 }
 
-function saveProduct(event) {
+async function saveProduct(event) {
   event.preventDefault();
   const name = els.productName.value.trim();
   const category = els.productCategory.value === OTHER_CATEGORY
@@ -566,30 +634,57 @@ function saveProduct(event) {
   }
 
   const editingId = els.productForm.dataset.editingId;
+  const productPayload = {
+    id: editingId || createId(),
+    name,
+    category,
+    price,
+    stock,
+    minStock
+  };
+
   if (editingId) {
-    const product = getProduct(editingId);
-    if (product) {
-      product.name = name;
-      product.category = category;
-      product.price = price;
-      product.stock = stock;
-      product.minStock = minStock;
+    if (API_ENABLED) {
+      try {
+        state = await apiRequest("/api/products", {
+          method: "POST",
+          body: JSON.stringify(productPayload)
+        });
+      } catch (error) {
+        showToast(error.message);
+        return;
+      }
+    } else {
+      const product = getProduct(editingId);
+      if (product) {
+        product.name = name;
+        product.category = category;
+        product.price = price;
+        product.stock = stock;
+        product.minStock = minStock;
+      }
+      saveState();
     }
     delete els.productForm.dataset.editingId;
     showToast("Produk berhasil diubah.");
   } else {
-    state.products.push({
-      id: createId(),
-      name,
-      category,
-      price,
-      stock,
-      minStock
-    });
+    if (API_ENABLED) {
+      try {
+        state = await apiRequest("/api/products", {
+          method: "POST",
+          body: JSON.stringify(productPayload)
+        });
+      } catch (error) {
+        showToast(error.message);
+        return;
+      }
+    } else {
+      state.products.push(productPayload);
+      saveState();
+    }
     showToast("Produk baru berhasil ditambahkan.");
   }
 
-  saveState();
   els.productForm.reset();
   els.productMinStock.value = 5;
   els.customCategory.value = "";
@@ -613,24 +708,35 @@ function editProduct(productId) {
   showToast("Data produk siap diubah di form kiri.");
 }
 
-function deleteProduct(productId) {
+async function deleteProduct(productId) {
   const product = getProduct(productId);
   if (!product) return;
 
-  const usedInTransaction = state.transactions.some((transaction) => transaction.items.some((item) => item.id === productId));
-  if (usedInTransaction) {
-    showToast("Produk pernah terjual, stok dibuat 0 agar riwayat tetap aman.");
-    product.stock = 0;
+  if (API_ENABLED) {
+    try {
+      state = await apiRequest(`/api/products/${encodeURIComponent(productId)}`, {
+        method: "DELETE"
+      });
+    } catch (error) {
+      showToast(error.message);
+      return;
+    }
   } else {
-    state.products = state.products.filter((item) => item.id !== productId);
+    const usedInTransaction = state.transactions.some((transaction) => transaction.items.some((item) => item.id === productId));
+    if (usedInTransaction) {
+      showToast("Produk pernah terjual, stok dibuat 0 agar riwayat tetap aman.");
+      product.stock = 0;
+    } else {
+      state.products = state.products.filter((item) => item.id !== productId);
+    }
+    saveState();
   }
 
   cart = cart.filter((item) => item.id !== productId);
-  saveState();
   render();
 }
 
-function clearHistory() {
+async function clearHistory() {
   if (!state.transactions.length) {
     showToast("Belum ada riwayat transaksi.");
     return;
@@ -642,13 +748,23 @@ function clearHistory() {
 
   if (!confirmed) return;
 
-  state.transactions = [];
-  saveState();
+  if (API_ENABLED) {
+    try {
+      state = await apiRequest("/api/transactions", { method: "DELETE" });
+    } catch (error) {
+      showToast(error.message);
+      return;
+    }
+  } else {
+    state.transactions = [];
+    saveState();
+  }
+
   render();
   showToast("Semua riwayat transaksi berhasil dihapus.");
 }
 
-function deleteSelectedCategory() {
+async function deleteSelectedCategory() {
   const category = els.productCategory.value;
   if (!category || category === OTHER_CATEGORY) {
     showToast("Pilih kategori yang ingin dihapus.");
@@ -664,22 +780,49 @@ function deleteSelectedCategory() {
   const confirmed = window.confirm(`Hapus kategori "${category}" dari daftar pilihan?`);
   if (!confirmed) return;
 
-  const deletedCategories = new Set((state.deletedCategories || []).map((item) => item.toLowerCase()));
-  deletedCategories.add(category.toLowerCase());
-  state.deletedCategories = [...deletedCategories];
-  saveState();
+  if (API_ENABLED) {
+    try {
+      state = await apiRequest("/api/categories/delete", {
+        method: "POST",
+        body: JSON.stringify({ category })
+      });
+    } catch (error) {
+      showToast(error.message);
+      return;
+    }
+  } else {
+    const deletedCategories = new Set((state.deletedCategories || []).map((item) => item.toLowerCase()));
+    deletedCategories.add(category.toLowerCase());
+    state.deletedCategories = [...deletedCategories];
+    saveState();
+  }
+
   renderCategoryOptions();
   showToast("Kategori berhasil dihapus dari daftar pilihan.");
 }
 
-function changeStock(productId, amount) {
+async function changeStock(productId, amount) {
   const product = getProduct(productId);
   if (!product) return;
 
-  product.stock = Math.max(0, product.stock + amount);
-  saveState();
+  if (API_ENABLED) {
+    try {
+      state = await apiRequest(`/api/products/${encodeURIComponent(productId)}/stock`, {
+        method: "POST",
+        body: JSON.stringify({ amount })
+      });
+    } catch (error) {
+      showToast(error.message);
+      return;
+    }
+  } else {
+    product.stock = Math.max(0, product.stock + amount);
+    saveState();
+  }
+
   render();
-  showToast(`Stok ${product.name} sekarang ${product.stock}.`);
+  const updatedProduct = getProduct(productId) || product;
+  showToast(`Stok ${updatedProduct.name} sekarang ${updatedProduct.stock}.`);
 }
 
 function exportData() {
@@ -697,19 +840,31 @@ function importData(event) {
   if (!file) return;
 
   const reader = new FileReader();
-  reader.onload = () => {
+  reader.onload = async () => {
     try {
       const parsed = JSON.parse(reader.result);
       if (!Array.isArray(parsed.products) || !Array.isArray(parsed.transactions)) {
         throw new Error("Invalid backup");
       }
-      state = {
+
+      const importedState = {
         branchName: parsed.branchName || "Cabang Utama",
         products: parsed.products,
+        deletedCategories: Array.isArray(parsed.deletedCategories) ? parsed.deletedCategories : [],
         transactions: parsed.transactions
       };
+
+      if (API_ENABLED) {
+        state = await apiRequest("/api/import", {
+          method: "POST",
+          body: JSON.stringify(importedState)
+        });
+      } else {
+        state = importedState;
+        saveState();
+      }
+
       cart = [];
-      saveState();
       render();
       showToast("Data backup berhasil diimport.");
     } catch {
@@ -783,7 +938,12 @@ els.clearHistory.addEventListener("click", clearHistory);
 els.exportData.addEventListener("click", exportData);
 els.importData.addEventListener("change", importData);
 
-render();
+initApp();
+
+async function initApp() {
+  await loadState();
+  render();
+}
 
 setInterval(() => {
   const latestDayKey = todayKey();
