@@ -15,8 +15,12 @@ if errorlevel 1 (
 
 echo Menjalankan Mooncake 94...
 echo.
-echo Jika browser tidak terbuka otomatis, buka alamat ini:
+echo Di PC ini, aplikasi akan terbuka otomatis.
+echo Jika browser tidak terbuka, buka alamat ini:
 echo http://127.0.0.1:4173
+echo.
+echo Untuk HP/tablet, lihat alamat WiFi yang muncul di jendela ini setelah server berjalan.
+echo Pastikan HP/tablet memakai WiFi yang sama dengan PC kasir.
 echo.
 
 start "" "http://127.0.0.1:4173"

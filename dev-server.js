@@ -1,5 +1,6 @@
 const http = require("http");
 const fs = require("fs");
+const os = require("os");
 const path = require("path");
 
 const root = __dirname;
@@ -36,6 +37,27 @@ http
       response.end(data);
     });
   })
-  .listen(port, "127.0.0.1", () => {
-    console.log(`Mooncake 94 berjalan di http://127.0.0.1:${port}`);
+  .listen(port, "0.0.0.0", () => {
+    const localUrls = getLocalUrls();
+    console.log(`Mooncake 94 berjalan di PC ini: http://127.0.0.1:${port}`);
+    console.log("");
+    console.log("Untuk HP/tablet di WiFi yang sama, buka salah satu alamat ini:");
+    localUrls.forEach((url) => console.log(`- ${url}`));
+    console.log("");
+    console.log("Biarkan jendela ini tetap terbuka selama aplikasi dipakai.");
   });
+
+function getLocalUrls() {
+  const interfaces = os.networkInterfaces();
+  const urls = [];
+
+  Object.values(interfaces).forEach((items) => {
+    (items || []).forEach((item) => {
+      if (item.family === "IPv4" && !item.internal) {
+        urls.push(`http://${item.address}:${port}`);
+      }
+    });
+  });
+
+  return urls.length ? urls : [`http://alamat-ip-pc:${port}`];
+}

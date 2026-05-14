@@ -3,10 +3,10 @@ const DEFAULT_CATEGORIES = ["Roti", "Kue", "Pastry", "Minuman"];
 const OTHER_CATEGORY = "Lainnya";
 
 const defaultProducts = [
-  { id: crypto.randomUUID(), name: "Roti Tawar", category: "Roti", price: 18000, stock: 20, minStock: 5 },
-  { id: crypto.randomUUID(), name: "Croissant Butter", category: "Pastry", price: 15000, stock: 18, minStock: 5 },
-  { id: crypto.randomUUID(), name: "Donat Cokelat", category: "Kue", price: 8000, stock: 30, minStock: 8 },
-  { id: crypto.randomUUID(), name: "Kopi Susu", category: "Minuman", price: 12000, stock: 25, minStock: 6 }
+  { id: createId(), name: "Roti Tawar", category: "Roti", price: 18000, stock: 20, minStock: 5 },
+  { id: createId(), name: "Croissant Butter", category: "Pastry", price: 15000, stock: 18, minStock: 5 },
+  { id: createId(), name: "Donat Cokelat", category: "Kue", price: 8000, stock: 30, minStock: 8 },
+  { id: createId(), name: "Kopi Susu", category: "Minuman", price: 12000, stock: 25, minStock: 6 }
 ];
 
 let state = loadState();
@@ -88,6 +88,14 @@ function loadState() {
 
 function saveState() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+}
+
+function createId() {
+  if (window.crypto && typeof window.crypto.randomUUID === "function") {
+    return window.crypto.randomUUID();
+  }
+
+  return `id-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 }
 
 function formatCurrency(value) {
@@ -471,7 +479,7 @@ function finishTransaction() {
   });
 
   const transaction = {
-    id: crypto.randomUUID(),
+    id: createId(),
     receiptNumber: `TRX-${new Date().toISOString().replace(/\D/g, "").slice(0, 14)}`,
     branchName: state.branchName,
     createdAt: new Date().toISOString(),
@@ -571,7 +579,7 @@ function saveProduct(event) {
     showToast("Produk berhasil diubah.");
   } else {
     state.products.push({
-      id: crypto.randomUUID(),
+      id: createId(),
       name,
       category,
       price,

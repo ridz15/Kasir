@@ -8,6 +8,18 @@ Aplikasi kasir lokal untuk toko bakery satu cabang. Versi awal ini berjalan lang
 2. Browser akan terbuka otomatis ke aplikasi Mooncake 94.
 3. Jika tidak terbuka otomatis, buka `http://127.0.0.1:4173`.
 
+## Buka dari HP atau tablet
+
+1. Pastikan PC kasir dan HP/tablet memakai WiFi yang sama.
+2. Klik dua kali `Jalankan Mooncake 94.bat` di PC kasir.
+3. Lihat jendela yang terbuka. Di sana akan muncul alamat seperti `http://192.168.1.10:4173`.
+4. Buka alamat tersebut di browser HP/tablet.
+5. Biarkan PC kasir dan jendela server tetap menyala selama aplikasi dipakai.
+
+Jika Windows Firewall muncul, pilih `Allow access` untuk jaringan private.
+
+Catatan: versi ini masih menyimpan data di browser masing-masing perangkat. Untuk data yang benar-benar satu sumber antara PC dan HP/tablet, penyimpanan perlu ditingkatkan ke database/server lokal.
+
 Cara alternatif:
 
 1. Buka file `index.html` di browser.
