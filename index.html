@@ -77,7 +77,7 @@
                 </div>
                 <label>
                   Uang diterima
-                  <input id="cashReceived" inputmode="numeric" type="number" min="0" placeholder="Contoh: 50000" />
+                  <input id="cashReceived" inputmode="numeric" placeholder="Contoh: 50.000" />
                 </label>
                 <div class="change-row">
                   <span>Kembalian</span>
@@ -113,9 +113,17 @@
                     <option>Lainnya</option>
                   </select>
                 </label>
+                <label class="manual-category hidden" id="manualCategoryWrap">
+                  Tulis kategori baru
+                  <input id="customCategory" placeholder="Contoh: Cookies" />
+                </label>
+                <div class="category-tools">
+                  <button class="secondary-button" id="deleteCategory" type="button">Hapus Kategori Terpilih</button>
+                  <p>Kategori yang masih dipakai produk tidak bisa dihapus.</p>
+                </div>
                 <label>
                   Harga jual
-                  <input id="productPrice" required type="number" min="0" placeholder="Contoh: 15000" />
+                  <input id="productPrice" required inputmode="numeric" placeholder="Contoh: 15.000" />
                 </label>
                 <label>
                   Stok saat ini

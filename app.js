@@ -1,4 +1,6 @@
 const STORAGE_KEY = "mooncake-94-data-v1";
+const DEFAULT_CATEGORIES = ["Roti", "Kue", "Pastry", "Minuman"];
+const OTHER_CATEGORY = "Lainnya";
 
 const defaultProducts = [
   { id: crypto.randomUUID(), name: "Roti Tawar", category: "Roti", price: 18000, stock: 20, minStock: 5 },
@@ -35,6 +37,9 @@ const els = {
   productForm: document.getElementById("productForm"),
   productName: document.getElementById("productName"),
   productCategory: document.getElementById("productCategory"),
+  customCategory: document.getElementById("customCategory"),
+  manualCategoryWrap: document.getElementById("manualCategoryWrap"),
+  deleteCategory: document.getElementById("deleteCategory"),
   productPrice: document.getElementById("productPrice"),
   productStock: document.getElementById("productStock"),
   productMinStock: document.getElementById("productMinStock"),
@@ -58,6 +63,7 @@ function loadState() {
     return {
       branchName: "Cabang Utama",
       products: defaultProducts,
+      deletedCategories: [],
       transactions: []
     };
   }
@@ -67,12 +73,14 @@ function loadState() {
     return {
       branchName: parsed.branchName || "Cabang Utama",
       products: Array.isArray(parsed.products) ? parsed.products : defaultProducts,
+      deletedCategories: Array.isArray(parsed.deletedCategories) ? parsed.deletedCategories : [],
       transactions: Array.isArray(parsed.transactions) ? parsed.transactions : []
     };
   } catch {
     return {
       branchName: "Cabang Utama",
       products: defaultProducts,
+      deletedCategories: [],
       transactions: []
     };
   }
@@ -88,6 +96,19 @@ function formatCurrency(value) {
     currency: "IDR",
     maximumFractionDigits: 0
   }).format(value || 0);
+}
+
+function parseMoneyInput(value) {
+  return Number(String(value || "").replace(/\D/g, "")) || 0;
+}
+
+function formatMoneyInput(value) {
+  const number = parseMoneyInput(value);
+  return number ? new Intl.NumberFormat("id-ID").format(number) : "";
+}
+
+function applyMoneyFormat(input) {
+  input.value = formatMoneyInput(input.value);
 }
 
 function formatDateTime(value) {
@@ -158,12 +179,14 @@ function renderProducts() {
 
 function renderCart() {
   const total = cartTotal();
-  const cash = Number(els.cashReceived.value || 0);
-  const change = Math.max(cash - total, 0);
+  const cash = parseMoneyInput(els.cashReceived.value);
+  const change = cash - total;
+  const isInsufficientPayment = cart.length > 0 && cash > 0 && change < 0;
 
   els.cartCount.textContent = cart.length ? `${cart.reduce((sum, item) => sum + item.qty, 0)} item di keranjang.` : "Belum ada produk.";
   els.cartTotal.textContent = formatCurrency(total);
-  els.changeAmount.textContent = formatCurrency(change);
+  els.changeAmount.textContent = isInsufficientPayment ? `-${formatCurrency(Math.abs(change))}` : formatCurrency(Math.max(change, 0));
+  els.changeAmount.classList.toggle("negative", isInsufficientPayment);
 
   if (!cart.length) {
     els.cartList.innerHTML = `<div class="empty-state">Klik produk di sebelah kiri untuk mulai transaksi.</div>`;
@@ -223,6 +246,42 @@ function renderInventory() {
       `;
     })
     .join("");
+}
+
+function getCategoryOptions() {
+  const deletedCategories = new Set((state.deletedCategories || []).map((category) => category.toLowerCase()));
+  const categories = [...DEFAULT_CATEGORIES, ...state.products.map((product) => product.category)]
+    .map((category) => String(category || "").trim())
+    .filter((category) => {
+      const normalized = category.toLowerCase();
+      return category && normalized !== OTHER_CATEGORY.toLowerCase() && !deletedCategories.has(normalized);
+    });
+
+  const uniqueCategories = [...new Map(categories.map((category) => [category.toLowerCase(), category])).values()];
+  uniqueCategories.sort((a, b) => a.localeCompare(b, "id", { sensitivity: "base" }));
+  return [...uniqueCategories, OTHER_CATEGORY];
+}
+
+function renderCategoryOptions(selectedCategory = els.productCategory.value) {
+  const categoryOptions = getCategoryOptions();
+  const selectedValue = String(selectedCategory || "");
+  const selectedExists = categoryOptions.some((category) => category.toLowerCase() === selectedValue.toLowerCase());
+  const finalSelected = selectedExists ? selectedValue : OTHER_CATEGORY;
+
+  els.productCategory.innerHTML = categoryOptions
+    .map((category) => `<option value="${escapeHtml(category)}">${escapeHtml(category)}</option>`)
+    .join("");
+  els.productCategory.value = finalSelected;
+  toggleManualCategory();
+}
+
+function toggleManualCategory() {
+  const isManual = els.productCategory.value === OTHER_CATEGORY;
+  els.manualCategoryWrap.classList.toggle("hidden", !isManual);
+  els.deleteCategory.disabled = isManual;
+  if (!isManual) {
+    els.customCategory.value = "";
+  }
 }
 
 function renderHistory() {
@@ -329,6 +388,7 @@ function render() {
 
   renderProducts();
   renderCart();
+  renderCategoryOptions();
   renderInventory();
   renderHistory();
   renderReports();
@@ -384,7 +444,7 @@ function updateCartItem(productId, action) {
 
 function finishTransaction() {
   const total = cartTotal();
-  const cash = Number(els.cashReceived.value || 0);
+  const cash = parseMoneyInput(els.cashReceived.value);
 
   if (!cart.length) {
     showToast("Keranjang masih kosong.");
@@ -392,7 +452,7 @@ function finishTransaction() {
   }
 
   if (cash < total) {
-    showToast("Uang diterima belum cukup.");
+    showToast(`Uang diterima belum cukup. Masih kurang ${formatCurrency(total - cash)}.`);
     return;
   }
 
@@ -485,12 +545,15 @@ function printReceipt(transaction) {
 function saveProduct(event) {
   event.preventDefault();
   const name = els.productName.value.trim();
-  const price = Number(els.productPrice.value || 0);
+  const category = els.productCategory.value === OTHER_CATEGORY
+    ? els.customCategory.value.trim()
+    : els.productCategory.value;
+  const price = parseMoneyInput(els.productPrice.value);
   const stock = Number(els.productStock.value || 0);
   const minStock = Number(els.productMinStock.value || 0);
 
-  if (!name || price <= 0) {
-    showToast("Nama dan harga produk wajib diisi.");
+  if (!name || !category || price <= 0) {
+    showToast("Nama, kategori, dan harga produk wajib diisi.");
     return;
   }
 
@@ -499,7 +562,7 @@ function saveProduct(event) {
     const product = getProduct(editingId);
     if (product) {
       product.name = name;
-      product.category = els.productCategory.value;
+      product.category = category;
       product.price = price;
       product.stock = stock;
       product.minStock = minStock;
@@ -510,7 +573,7 @@ function saveProduct(event) {
     state.products.push({
       id: crypto.randomUUID(),
       name,
-      category: els.productCategory.value,
+      category,
       price,
       stock,
       minStock
@@ -521,6 +584,7 @@ function saveProduct(event) {
   saveState();
   els.productForm.reset();
   els.productMinStock.value = 5;
+  els.customCategory.value = "";
   render();
 }
 
@@ -530,8 +594,11 @@ function editProduct(productId) {
 
   els.productForm.dataset.editingId = product.id;
   els.productName.value = product.name;
-  els.productCategory.value = product.category;
-  els.productPrice.value = product.price;
+  renderCategoryOptions(product.category);
+  if (els.productCategory.value === OTHER_CATEGORY && product.category !== OTHER_CATEGORY) {
+    els.customCategory.value = product.category;
+  }
+  els.productPrice.value = formatMoneyInput(product.price);
   els.productStock.value = product.stock;
   els.productMinStock.value = product.minStock;
   els.productName.focus();
@@ -571,6 +638,30 @@ function clearHistory() {
   saveState();
   render();
   showToast("Semua riwayat transaksi berhasil dihapus.");
+}
+
+function deleteSelectedCategory() {
+  const category = els.productCategory.value;
+  if (!category || category === OTHER_CATEGORY) {
+    showToast("Pilih kategori yang ingin dihapus.");
+    return;
+  }
+
+  const isUsed = state.products.some((product) => product.category.toLowerCase() === category.toLowerCase());
+  if (isUsed) {
+    showToast("Kategori masih dipakai produk, ubah produknya dulu sebelum hapus kategori.");
+    return;
+  }
+
+  const confirmed = window.confirm(`Hapus kategori "${category}" dari daftar pilihan?`);
+  if (!confirmed) return;
+
+  const deletedCategories = new Set((state.deletedCategories || []).map((item) => item.toLowerCase()));
+  deletedCategories.add(category.toLowerCase());
+  state.deletedCategories = [...deletedCategories];
+  saveState();
+  renderCategoryOptions();
+  showToast("Kategori berhasil dihapus dari daftar pilihan.");
 }
 
 function changeStock(productId, amount) {
@@ -666,9 +757,15 @@ els.historyList.addEventListener("click", (event) => {
 });
 
 els.productForm.addEventListener("submit", saveProduct);
+els.productCategory.addEventListener("change", toggleManualCategory);
+els.deleteCategory.addEventListener("click", deleteSelectedCategory);
+els.productPrice.addEventListener("input", () => applyMoneyFormat(els.productPrice));
 els.productSearch.addEventListener("input", renderProducts);
 els.inventorySearch.addEventListener("input", renderInventory);
-els.cashReceived.addEventListener("input", renderCart);
+els.cashReceived.addEventListener("input", () => {
+  applyMoneyFormat(els.cashReceived);
+  renderCart();
+});
 els.clearCart.addEventListener("click", () => {
   cart = [];
   renderCart();
