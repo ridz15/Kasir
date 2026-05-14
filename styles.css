@@ -1,0 +1,558 @@
+:root {
+  color-scheme: light;
+  --bg: #f5f3ef;
+  --surface: #ffffff;
+  --surface-soft: #faf8f4;
+  --text: #201b17;
+  --muted: #70685f;
+  --line: #ded7cf;
+  --brand: #8f3f25;
+  --brand-dark: #642713;
+  --accent: #20706f;
+  --warning: #b35b00;
+  --danger: #a12828;
+  --shadow: 0 14px 32px rgba(53, 38, 23, 0.1);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: var(--bg);
+  color: var(--text);
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+button,
+input,
+select {
+  font: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+.app-shell {
+  display: grid;
+  grid-template-columns: 260px minmax(0, 1fr);
+  min-height: 100vh;
+}
+
+.sidebar {
+  background: #2d211a;
+  color: #fffaf3;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.brand-mark {
+  width: 44px;
+  height: 44px;
+  border-radius: 8px;
+  display: block;
+  object-fit: cover;
+  background: #fffaf3;
+}
+
+.brand h1,
+.brand p,
+.panel h3,
+.panel p,
+.topbar h2,
+.eyebrow {
+  margin: 0;
+}
+
+.brand h1 {
+  font-size: 20px;
+}
+
+.brand p,
+.panel p,
+.eyebrow {
+  color: var(--muted);
+}
+
+.sidebar .brand p,
+.sidebar-summary span {
+  color: #d7c9bb;
+}
+
+.nav {
+  display: grid;
+  gap: 8px;
+}
+
+.nav-item {
+  border: 0;
+  border-radius: 8px;
+  padding: 13px 14px;
+  background: transparent;
+  color: #fffaf3;
+  text-align: left;
+}
+
+.nav-item.active,
+.nav-item:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.sidebar-summary {
+  margin-top: auto;
+  padding: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 8px;
+  display: grid;
+  gap: 6px;
+}
+
+.sidebar-summary strong {
+  font-size: 24px;
+}
+
+.main {
+  padding: 24px;
+  display: grid;
+  align-content: start;
+  gap: 20px;
+}
+
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.topbar h2 {
+  font-size: 30px;
+}
+
+.topbar-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.view {
+  display: none;
+}
+
+.view.active {
+  display: block;
+}
+
+.cashier-layout,
+.inventory-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 390px;
+  gap: 20px;
+  align-items: start;
+}
+
+.inventory-layout {
+  grid-template-columns: 360px minmax(0, 1fr);
+}
+
+.panel,
+.metric-card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  box-shadow: var(--shadow);
+}
+
+.panel {
+  padding: 18px;
+}
+
+.panel-header {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.panel h3 {
+  font-size: 20px;
+}
+
+.panel p {
+  margin-top: 4px;
+  font-size: 14px;
+}
+
+.search-input,
+label input,
+label select {
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--text);
+  padding: 11px 12px;
+}
+
+.search-input {
+  max-width: 300px;
+}
+
+.product-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+  gap: 12px;
+}
+
+.product-card {
+  min-height: 128px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface-soft);
+  padding: 14px;
+  display: grid;
+  gap: 8px;
+  text-align: left;
+}
+
+.product-card:hover {
+  border-color: var(--brand);
+}
+
+.product-card strong {
+  font-size: 17px;
+}
+
+.product-card span {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.stock-badge {
+  justify-self: start;
+  border-radius: 999px;
+  padding: 4px 9px;
+  background: #e7f2ef;
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.stock-badge.low {
+  background: #fff0df;
+  color: var(--warning);
+}
+
+.stock-badge.empty {
+  background: #ffe6e3;
+  color: var(--danger);
+}
+
+.cart-list,
+.history-list,
+.best-seller-list {
+  display: grid;
+  gap: 10px;
+}
+
+.cart-list {
+  min-height: 180px;
+  max-height: 42vh;
+  overflow: auto;
+}
+
+.empty-state {
+  border: 1px dashed var(--line);
+  border-radius: 8px;
+  padding: 18px;
+  color: var(--muted);
+  text-align: center;
+  background: var(--surface-soft);
+}
+
+.cart-item,
+.history-item,
+.seller-item {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 12px;
+  display: grid;
+  gap: 8px;
+}
+
+.item-top,
+.item-actions,
+.history-top,
+.seller-item {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+}
+
+.item-actions button,
+.stock-actions button {
+  width: 34px;
+  height: 34px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+}
+
+.payment-box {
+  border-top: 1px solid var(--line);
+  margin-top: 16px;
+  padding-top: 16px;
+  display: grid;
+  gap: 12px;
+}
+
+.total-row,
+.change-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.total-row strong,
+.change-row strong {
+  font-size: 24px;
+}
+
+label {
+  display: grid;
+  gap: 7px;
+  color: var(--muted);
+  font-weight: 700;
+  font-size: 14px;
+}
+
+.product-form {
+  display: grid;
+  gap: 13px;
+}
+
+.primary-button,
+.secondary-button,
+.ghost-button,
+.danger-button {
+  border-radius: 8px;
+  min-height: 42px;
+  padding: 0 14px;
+  font-weight: 800;
+}
+
+.primary-button {
+  border: 0;
+  background: var(--brand);
+  color: #fff;
+}
+
+.primary-button:hover {
+  background: var(--brand-dark);
+}
+
+.secondary-button {
+  border: 1px solid var(--line);
+  background: #fff;
+  color: var(--text);
+  display: inline-grid;
+  place-items: center;
+}
+
+.ghost-button {
+  border: 0;
+  background: transparent;
+  color: var(--brand);
+}
+
+.danger-button {
+  border: 1px solid #efc5bd;
+  background: #fff4f2;
+  color: var(--danger);
+}
+
+.panel-header .danger-button {
+  white-space: nowrap;
+}
+
+.file-button input {
+  display: none;
+}
+
+.table-wrap {
+  overflow-x: auto;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+th,
+td {
+  border-bottom: 1px solid var(--line);
+  padding: 12px 8px;
+  text-align: left;
+  vertical-align: middle;
+}
+
+th {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.stock-actions {
+  display: flex;
+  gap: 7px;
+  flex-wrap: wrap;
+}
+
+.report-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.metric-card {
+  padding: 18px;
+  display: grid;
+  gap: 8px;
+}
+
+.metric-card span {
+  color: var(--muted);
+}
+
+.metric-card strong {
+  font-size: 32px;
+}
+
+.chart {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(56px, 1fr));
+  gap: 12px;
+  align-items: end;
+  min-height: 260px;
+  overflow-x: auto;
+}
+
+.bar-wrap {
+  min-width: 56px;
+  display: grid;
+  gap: 8px;
+  align-items: end;
+  text-align: center;
+}
+
+.bar {
+  min-height: 8px;
+  border-radius: 8px 8px 0 0;
+  background: var(--accent);
+}
+
+.bar-value,
+.bar-label {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.toast {
+  position: fixed;
+  right: 20px;
+  bottom: 20px;
+  max-width: 360px;
+  padding: 13px 15px;
+  border-radius: 8px;
+  background: #2d211a;
+  color: #fff;
+  box-shadow: var(--shadow);
+  opacity: 0;
+  transform: translateY(12px);
+  pointer-events: none;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.toast.show {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+@media (max-width: 1100px) {
+  .app-shell {
+    grid-template-columns: 1fr;
+  }
+
+  .sidebar {
+    position: sticky;
+    top: 0;
+    z-index: 5;
+    padding: 14px;
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .nav {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .nav-item {
+    text-align: center;
+  }
+
+  .sidebar-summary {
+    display: none;
+  }
+}
+
+@media (max-width: 900px) {
+  .cashier-layout,
+  .inventory-layout,
+  .report-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .cart-list {
+    max-height: none;
+  }
+}
+
+@media (max-width: 640px) {
+  .main {
+    padding: 14px;
+  }
+
+  .topbar,
+  .panel-header,
+  .item-top,
+  .history-top {
+    display: grid;
+  }
+
+  .topbar-actions,
+  .search-input {
+    max-width: none;
+    width: 100%;
+  }
+
+  .nav {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .product-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}

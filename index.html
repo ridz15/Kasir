@@ -1,0 +1,212 @@
+<!doctype html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Mooncake 94</title>
+    <link rel="icon" type="image/png" href="public/mooncake94.png" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar">
+        <div class="brand">
+          <img class="brand-mark" src="public/mooncake94.png" alt="Mooncake 94" />
+          <div>
+            <h1>Mooncake 94</h1>
+            <p>Cabang Utama</p>
+          </div>
+        </div>
+
+        <nav class="nav" aria-label="Navigasi utama">
+          <button class="nav-item active" data-view="cashier">Kasir</button>
+          <button class="nav-item" data-view="products">Produk & Stok</button>
+          <button class="nav-item" data-view="history">Riwayat</button>
+          <button class="nav-item" data-view="reports">Laporan</button>
+        </nav>
+
+        <div class="sidebar-summary">
+          <span>Omset Hari Ini</span>
+          <strong id="todayRevenue">Rp0</strong>
+        </div>
+      </aside>
+
+      <main class="main">
+        <section class="topbar">
+          <div>
+            <p class="eyebrow" id="currentDate">Hari ini</p>
+            <h2 id="viewTitle">Kasir</h2>
+          </div>
+          <div class="topbar-actions">
+            <button class="secondary-button" id="exportData">Backup Data</button>
+            <label class="secondary-button file-button">
+              Import Data
+              <input id="importData" type="file" accept="application/json" />
+            </label>
+          </div>
+        </section>
+
+        <section class="view active" id="cashierView">
+          <div class="cashier-layout">
+            <section class="panel products-panel">
+              <div class="panel-header">
+                <div>
+                  <h3>Pilih Produk</h3>
+                  <p>Klik produk untuk masuk keranjang.</p>
+                </div>
+                <input id="productSearch" class="search-input" type="search" placeholder="Cari roti, kue, minuman..." />
+              </div>
+              <div class="product-grid" id="productGrid"></div>
+            </section>
+
+            <section class="panel cart-panel">
+              <div class="panel-header">
+                <div>
+                  <h3>Keranjang</h3>
+                  <p id="cartCount">Belum ada produk.</p>
+                </div>
+                <button class="ghost-button" id="clearCart">Kosongkan</button>
+              </div>
+
+              <div class="cart-list" id="cartList"></div>
+
+              <div class="payment-box">
+                <div class="total-row">
+                  <span>Total</span>
+                  <strong id="cartTotal">Rp0</strong>
+                </div>
+                <label>
+                  Uang diterima
+                  <input id="cashReceived" inputmode="numeric" type="number" min="0" placeholder="Contoh: 50000" />
+                </label>
+                <div class="change-row">
+                  <span>Kembalian</span>
+                  <strong id="changeAmount">Rp0</strong>
+                </div>
+                <button class="primary-button" id="finishTransaction">Selesaikan & Print Struk</button>
+              </div>
+            </section>
+          </div>
+        </section>
+
+        <section class="view" id="productsView">
+          <div class="inventory-layout">
+            <section class="panel">
+              <div class="panel-header">
+                <div>
+                  <h3>Tambah Produk</h3>
+                  <p>Isi nama, harga, dan stok awal.</p>
+                </div>
+              </div>
+              <form class="product-form" id="productForm">
+                <label>
+                  Nama produk
+                  <input id="productName" required placeholder="Contoh: Croissant Butter" />
+                </label>
+                <label>
+                  Kategori
+                  <select id="productCategory">
+                    <option>Roti</option>
+                    <option>Kue</option>
+                    <option>Pastry</option>
+                    <option>Minuman</option>
+                    <option>Lainnya</option>
+                  </select>
+                </label>
+                <label>
+                  Harga jual
+                  <input id="productPrice" required type="number" min="0" placeholder="Contoh: 15000" />
+                </label>
+                <label>
+                  Stok saat ini
+                  <input id="productStock" required type="number" min="0" placeholder="Contoh: 24" />
+                </label>
+                <label>
+                  Batas stok rendah
+                  <input id="productMinStock" type="number" min="0" value="5" />
+                </label>
+                <button class="primary-button" type="submit">Simpan Produk</button>
+              </form>
+            </section>
+
+            <section class="panel">
+              <div class="panel-header">
+                <div>
+                  <h3>Daftar Produk</h3>
+                  <p>Tambah stok cepat atau ubah data produk.</p>
+                </div>
+                <input id="inventorySearch" class="search-input" type="search" placeholder="Cari produk..." />
+              </div>
+              <div class="table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Produk</th>
+                      <th>Harga</th>
+                      <th>Stok</th>
+                      <th>Aksi</th>
+                    </tr>
+                  </thead>
+                  <tbody id="inventoryTable"></tbody>
+                </table>
+              </div>
+            </section>
+          </div>
+        </section>
+
+        <section class="view" id="historyView">
+          <section class="panel">
+            <div class="panel-header">
+              <div>
+                <h3>Riwayat Transaksi</h3>
+                <p>Transaksi terbaru tampil paling atas.</p>
+              </div>
+              <button class="danger-button" id="clearHistory">Hapus Semua Riwayat</button>
+            </div>
+            <div class="history-list" id="historyList"></div>
+          </section>
+        </section>
+
+        <section class="view" id="reportsView">
+          <div class="report-grid">
+            <section class="metric-card">
+              <span>Transaksi Hari Ini</span>
+              <strong id="todayTransactions">0</strong>
+            </section>
+            <section class="metric-card">
+              <span>Produk Terjual Hari Ini</span>
+              <strong id="todayItemsSold">0</strong>
+            </section>
+            <section class="metric-card">
+              <span>Stok Rendah</span>
+              <strong id="lowStockCount">0</strong>
+            </section>
+          </div>
+
+          <section class="panel">
+            <div class="panel-header">
+              <div>
+                <h3>Omset 7 Hari Terakhir</h3>
+                <p>Ringkasan sederhana untuk pemantauan harian.</p>
+              </div>
+            </div>
+            <div class="chart" id="revenueChart"></div>
+          </section>
+
+          <section class="panel">
+            <div class="panel-header">
+              <div>
+                <h3>Produk Terlaris</h3>
+                <p>Berdasarkan semua transaksi yang tersimpan.</p>
+              </div>
+            </div>
+            <div class="best-seller-list" id="bestSellerList"></div>
+          </section>
+        </section>
+      </main>
+    </div>
+
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+    <script src="app.js"></script>
+  </body>
+</html>
