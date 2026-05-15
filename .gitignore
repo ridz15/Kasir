@@ -4,4 +4,5 @@ data/initial-admin-password.txt
 *.log
 
 /video
-/image
+/image.vs/
+tools/
