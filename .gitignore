@@ -3,6 +3,7 @@ data/*.db-*
 data/initial-admin-password.txt
 *.log
 
-/video
-/image.vs/
+/video/
+image/
+.vs/
 tools/
