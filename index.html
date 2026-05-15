@@ -59,9 +59,9 @@
           <div class="topbar-actions">
             <button class="secondary-button" id="openPasswordModal">Ganti Password</button>
             <button class="secondary-button" id="logoutButton">Logout</button>
-            <button class="secondary-button" id="exportData">Backup Data</button>
+            <button class="secondary-button" id="exportData">Backup Penuh</button>
             <label class="secondary-button file-button">
-              Import Data
+              Import Penuh
               <input id="importData" type="file" accept="application/json" />
             </label>
           </div>
@@ -164,7 +164,14 @@
                   <h3>Daftar Produk</h3>
                   <p>Tambah stok cepat atau ubah data produk.</p>
                 </div>
-                <input id="inventorySearch" class="search-input" type="search" placeholder="Cari produk..." />
+                <div class="panel-actions">
+                  <button class="secondary-button" id="exportProducts" type="button">Backup Produk & Stok</button>
+                  <label class="secondary-button file-button">
+                    Import Produk & Stok
+                    <input id="importProducts" type="file" accept="application/json" />
+                  </label>
+                  <input id="inventorySearch" class="search-input" type="search" placeholder="Cari produk..." />
+                </div>
               </div>
               <div class="table-wrap">
                 <table>
@@ -190,7 +197,15 @@
                 <h3>Riwayat Transaksi</h3>
                 <p>Transaksi terbaru tampil paling atas.</p>
               </div>
-              <button class="danger-button" id="clearHistory">Hapus Semua Riwayat</button>
+              <div class="panel-actions">
+                <button class="secondary-button" id="openTransactionExport" type="button">Backup Riwayat</button>
+                <button class="report-button" id="openTransactionReport" type="button">Export Laporan CSV</button>
+                <label class="secondary-button file-button">
+                  Import Riwayat
+                  <input id="importTransactions" type="file" accept="application/json" />
+                </label>
+                <button class="danger-button" id="clearHistory">Hapus Semua Riwayat</button>
+              </div>
             </div>
             <div class="history-list" id="historyList"></div>
           </section>
@@ -256,6 +271,48 @@
         <div class="modal-actions">
           <button class="secondary-button" id="closePasswordModal" type="button">Batal</button>
           <button class="primary-button" type="submit">Simpan Password</button>
+        </div>
+      </form>
+    </section>
+
+    <section class="modal hidden" id="transactionExportModal">
+      <form class="modal-card" id="transactionExportForm">
+        <div>
+          <h2>Backup Riwayat</h2>
+          <p>Pilih rentang tanggal transaksi yang ingin disimpan.</p>
+        </div>
+        <label>
+          Dari tanggal
+          <input id="exportStartDate" required type="date" />
+        </label>
+        <label>
+          Sampai tanggal
+          <input id="exportEndDate" required type="date" />
+        </label>
+        <div class="modal-actions">
+          <button class="secondary-button" id="closeTransactionExport" type="button">Batal</button>
+          <button class="primary-button" type="submit">Download JSON</button>
+        </div>
+      </form>
+    </section>
+
+    <section class="modal hidden" id="transactionReportModal">
+      <form class="modal-card" id="transactionReportForm">
+        <div>
+          <h2>Export Laporan CSV</h2>
+          <p>Pilih rentang tanggal laporan untuk dibuka di Excel atau Google Sheets.</p>
+        </div>
+        <label>
+          Dari tanggal
+          <input id="reportStartDate" required type="date" />
+        </label>
+        <label>
+          Sampai tanggal
+          <input id="reportEndDate" required type="date" />
+        </label>
+        <div class="modal-actions">
+          <button class="secondary-button" id="closeTransactionReport" type="button">Batal</button>
+          <button class="report-button" type="submit">Download CSV</button>
         </div>
       </form>
     </section>

@@ -32,6 +32,18 @@ const els = {
   newPassword: document.getElementById("newPassword"),
   confirmPassword: document.getElementById("confirmPassword"),
   closePasswordModal: document.getElementById("closePasswordModal"),
+  openTransactionExport: document.getElementById("openTransactionExport"),
+  transactionExportModal: document.getElementById("transactionExportModal"),
+  transactionExportForm: document.getElementById("transactionExportForm"),
+  exportStartDate: document.getElementById("exportStartDate"),
+  exportEndDate: document.getElementById("exportEndDate"),
+  closeTransactionExport: document.getElementById("closeTransactionExport"),
+  openTransactionReport: document.getElementById("openTransactionReport"),
+  transactionReportModal: document.getElementById("transactionReportModal"),
+  transactionReportForm: document.getElementById("transactionReportForm"),
+  reportStartDate: document.getElementById("reportStartDate"),
+  reportEndDate: document.getElementById("reportEndDate"),
+  closeTransactionReport: document.getElementById("closeTransactionReport"),
   navItems: document.querySelectorAll(".nav-item"),
   views: {
     cashier: document.getElementById("cashierView"),
@@ -62,7 +74,10 @@ const els = {
   productMinStock: document.getElementById("productMinStock"),
   inventorySearch: document.getElementById("inventorySearch"),
   inventoryTable: document.getElementById("inventoryTable"),
+  exportProducts: document.getElementById("exportProducts"),
+  importProducts: document.getElementById("importProducts"),
   historyList: document.getElementById("historyList"),
+  importTransactions: document.getElementById("importTransactions"),
   clearHistory: document.getElementById("clearHistory"),
   todayTransactions: document.getElementById("todayTransactions"),
   todayItemsSold: document.getElementById("todayItemsSold"),
@@ -260,6 +275,14 @@ function formatDateTime(value) {
   return new Intl.DateTimeFormat("id-ID", {
     dateStyle: "medium",
     timeStyle: "short"
+  }).format(new Date(value));
+}
+
+function formatDateOnly(value) {
+  return new Intl.DateTimeFormat("id-ID", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric"
   }).format(new Date(value));
 }
 
@@ -959,13 +982,170 @@ async function changeStock(productId, amount) {
 }
 
 function exportData() {
-  const blob = new Blob([JSON.stringify(state, null, 2)], { type: "application/json" });
+  downloadJson(`backup-penuh-moncake94-${todayKey()}.json`, {
+    backupType: "full",
+    exportedAt: new Date().toISOString(),
+    data: state
+  });
+}
+
+function exportProducts() {
+  downloadJson(`backup-produk-stok-moncake94-${todayKey()}.json`, {
+    backupType: "products",
+    exportedAt: new Date().toISOString(),
+    data: {
+      branchName: state.branchName,
+      products: state.products,
+      deletedCategories: state.deletedCategories || []
+    }
+  });
+}
+
+function downloadJson(filename, payload) {
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;
-  link.download = `backup-moncake94-${todayKey()}.json`;
+  link.download = filename;
   link.click();
   URL.revokeObjectURL(url);
+}
+
+function openTransactionExportModal() {
+  const today = todayKey();
+  els.exportStartDate.value = today;
+  els.exportEndDate.value = today;
+  els.transactionExportModal.classList.remove("hidden");
+  els.exportStartDate.focus();
+}
+
+function closeTransactionExportModal() {
+  els.transactionExportForm.reset();
+  els.transactionExportModal.classList.add("hidden");
+}
+
+function openTransactionReportModal() {
+  const today = todayKey();
+  els.reportStartDate.value = today;
+  els.reportEndDate.value = today;
+  els.transactionReportModal.classList.remove("hidden");
+  els.reportStartDate.focus();
+}
+
+function closeTransactionReportModal() {
+  els.transactionReportForm.reset();
+  els.transactionReportModal.classList.add("hidden");
+}
+
+function exportTransactionHistory(event) {
+  event.preventDefault();
+  const startDate = els.exportStartDate.value;
+  const endDate = els.exportEndDate.value;
+
+  if (!startDate || !endDate) {
+    showToast("Tanggal awal dan akhir wajib diisi.");
+    return;
+  }
+
+  if (startDate > endDate) {
+    showToast("Tanggal awal tidak boleh lebih besar dari tanggal akhir.");
+    return;
+  }
+
+  const transactions = state.transactions.filter((transaction) => {
+    const key = todayKey(transaction.createdAt);
+    return key >= startDate && key <= endDate;
+  });
+
+  if (!transactions.length) {
+    showToast("Tidak ada transaksi pada rentang tanggal tersebut.");
+    return;
+  }
+
+  downloadJson(`backup-riwayat-moncake94-${startDate}-sd-${endDate}.json`, {
+    backupType: "transactions",
+    exportedAt: new Date().toISOString(),
+    dateRange: { startDate, endDate },
+    data: {
+      branchName: state.branchName,
+      transactions
+    }
+  });
+  closeTransactionExportModal();
+  showToast("Riwayat transaksi berhasil dibackup.");
+}
+
+function exportTransactionReport(event) {
+  event.preventDefault();
+  const startDate = els.reportStartDate.value;
+  const endDate = els.reportEndDate.value;
+
+  if (!startDate || !endDate) {
+    showToast("Tanggal awal dan akhir wajib diisi.");
+    return;
+  }
+
+  if (startDate > endDate) {
+    showToast("Tanggal awal tidak boleh lebih besar dari tanggal akhir.");
+    return;
+  }
+
+  const transactions = state.transactions.filter((transaction) => {
+    const key = todayKey(transaction.createdAt);
+    return key >= startDate && key <= endDate;
+  });
+
+  if (!transactions.length) {
+    showToast("Tidak ada transaksi pada rentang tanggal tersebut.");
+    return;
+  }
+
+  const rows = [
+    ["Tanggal", "Jam", "Nomor Struk", "Produk", "Qty", "Harga Satuan", "Subtotal", "Total Transaksi", "Tunai", "Kembalian"]
+  ];
+
+  transactions.forEach((transaction) => {
+    const date = new Date(transaction.createdAt);
+    const dateText = formatDateOnly(transaction.createdAt);
+    const timeText = new Intl.DateTimeFormat("id-ID", {
+      hour: "2-digit",
+      minute: "2-digit"
+    }).format(date);
+
+    transaction.items.forEach((item, index) => {
+      rows.push([
+        dateText,
+        timeText,
+        transaction.receiptNumber,
+        item.name,
+        item.qty,
+        item.price,
+        item.price * item.qty,
+        index === 0 ? transaction.total : "",
+        index === 0 ? transaction.cash : "",
+        index === 0 ? transaction.change : ""
+      ]);
+    });
+  });
+
+  const csv = rows.map((row) => row.map(escapeCsv).join(",")).join("\r\n");
+  const blob = new Blob([`\uFEFF${csv}`], { type: "text/csv;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = `laporan-transaksi-moncake94-${startDate}-sd-${endDate}.csv`;
+  link.click();
+  URL.revokeObjectURL(url);
+  closeTransactionReportModal();
+  showToast("Laporan CSV berhasil diexport.");
+}
+
+function escapeCsv(value) {
+  const text = String(value ?? "");
+  if (/[",\r\n]/.test(text)) {
+    return `"${text.replaceAll('"', '""')}"`;
+  }
+  return text;
 }
 
 function importData(event) {
@@ -976,15 +1156,82 @@ function importData(event) {
   reader.onload = async () => {
     try {
       const parsed = JSON.parse(reader.result);
-      if (!Array.isArray(parsed.products) || !Array.isArray(parsed.transactions)) {
-        throw new Error("Invalid backup");
+      const importedState = parseFullBackup(parsed);
+
+      if (API_ENABLED) {
+        state = await apiRequest("/api/import", {
+          method: "POST",
+          body: JSON.stringify(importedState)
+        });
+      } else {
+        state = importedState;
+        saveState();
       }
 
+      cart = [];
+      render();
+      showToast("Backup penuh berhasil diimport.");
+    } catch (error) {
+      showToast(error.message || "File backup tidak sesuai.");
+    }
+  };
+  reader.readAsText(file);
+  event.target.value = "";
+}
+
+function importTransactions(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = async () => {
+    try {
+      const transactionState = parseTransactionsBackup(JSON.parse(reader.result));
+      const existingIds = new Set(state.transactions.map((transaction) => transaction.id));
+      const mergedTransactions = [
+        ...state.transactions,
+        ...transactionState.transactions.filter((transaction) => !existingIds.has(transaction.id))
+      ];
+
       const importedState = {
-        branchName: parsed.branchName || "Cabang Utama",
-        products: parsed.products,
-        deletedCategories: Array.isArray(parsed.deletedCategories) ? parsed.deletedCategories : [],
-        transactions: parsed.transactions
+        ...state,
+        branchName: transactionState.branchName || state.branchName,
+        transactions: mergedTransactions
+      };
+
+      if (API_ENABLED) {
+        state = await apiRequest("/api/import", {
+          method: "POST",
+          body: JSON.stringify(importedState)
+        });
+      } else {
+        state = importedState;
+        saveState();
+      }
+
+      render();
+      showToast("Riwayat transaksi berhasil diimport.");
+    } catch (error) {
+      showToast(error.message || "File riwayat transaksi tidak sesuai.");
+    }
+  };
+  reader.readAsText(file);
+  event.target.value = "";
+}
+
+function importProducts(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = async () => {
+    try {
+      const productState = parseProductsBackup(JSON.parse(reader.result));
+      const importedState = {
+        ...state,
+        branchName: productState.branchName || state.branchName,
+        products: productState.products,
+        deletedCategories: productState.deletedCategories || []
       };
 
       if (API_ENABLED) {
@@ -999,13 +1246,64 @@ function importData(event) {
 
       cart = [];
       render();
-      showToast("Data backup berhasil diimport.");
-    } catch {
-      showToast("File backup tidak sesuai.");
+      showToast("Produk dan stok berhasil diimport.");
+    } catch (error) {
+      showToast(error.message || "File produk dan stok tidak sesuai.");
     }
   };
   reader.readAsText(file);
   event.target.value = "";
+}
+
+function parseFullBackup(parsed) {
+  if (parsed.backupType !== "full" || !parsed.data) {
+    throw new Error("File ini bukan backup penuh.");
+  }
+
+  const data = parsed.data;
+  if (!Array.isArray(data.products) || !Array.isArray(data.transactions)) {
+    throw new Error("Isi backup penuh tidak sesuai.");
+  }
+
+  return {
+    branchName: data.branchName || "Cabang Utama",
+    products: data.products,
+    deletedCategories: Array.isArray(data.deletedCategories) ? data.deletedCategories : [],
+    transactions: data.transactions
+  };
+}
+
+function parseProductsBackup(parsed) {
+  if (parsed.backupType !== "products" || !parsed.data) {
+    throw new Error("File ini bukan backup produk dan stok.");
+  }
+
+  const data = parsed.data;
+  if (!Array.isArray(data.products)) {
+    throw new Error("Isi backup produk dan stok tidak sesuai.");
+  }
+
+  return {
+    branchName: data.branchName || "Cabang Utama",
+    products: data.products,
+    deletedCategories: Array.isArray(data.deletedCategories) ? data.deletedCategories : []
+  };
+}
+
+function parseTransactionsBackup(parsed) {
+  if (parsed.backupType !== "transactions" || !parsed.data) {
+    throw new Error("File ini bukan backup riwayat transaksi.");
+  }
+
+  const data = parsed.data;
+  if (!Array.isArray(data.transactions)) {
+    throw new Error("Isi backup riwayat transaksi tidak sesuai.");
+  }
+
+  return {
+    branchName: data.branchName || "Cabang Utama",
+    transactions: data.transactions
+  };
 }
 
 function escapeHtml(value) {
@@ -1057,6 +1355,12 @@ els.logoutButton.addEventListener("click", logout);
 els.openPasswordModal.addEventListener("click", openPasswordModal);
 els.closePasswordModal.addEventListener("click", closePasswordModal);
 els.passwordForm.addEventListener("submit", changePassword);
+els.openTransactionExport.addEventListener("click", openTransactionExportModal);
+els.closeTransactionExport.addEventListener("click", closeTransactionExportModal);
+els.transactionExportForm.addEventListener("submit", exportTransactionHistory);
+els.openTransactionReport.addEventListener("click", openTransactionReportModal);
+els.closeTransactionReport.addEventListener("click", closeTransactionReportModal);
+els.transactionReportForm.addEventListener("submit", exportTransactionReport);
 els.productForm.addEventListener("submit", saveProduct);
 els.productCategory.addEventListener("change", toggleManualCategory);
 els.deleteCategory.addEventListener("click", deleteSelectedCategory);
@@ -1075,6 +1379,9 @@ els.finishTransaction.addEventListener("click", finishTransaction);
 els.clearHistory.addEventListener("click", clearHistory);
 els.exportData.addEventListener("click", exportData);
 els.importData.addEventListener("change", importData);
+els.exportProducts.addEventListener("click", exportProducts);
+els.importProducts.addEventListener("change", importProducts);
+els.importTransactions.addEventListener("change", importTransactions);
 
 initApp();
 

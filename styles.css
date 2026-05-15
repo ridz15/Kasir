@@ -439,6 +439,7 @@ label {
 
 .primary-button,
 .secondary-button,
+.report-button,
 .ghost-button,
 .danger-button {
   border-radius: 8px;
@@ -465,6 +466,18 @@ label {
   place-items: center;
 }
 
+.report-button {
+  border: 0;
+  background: var(--accent);
+  color: #fff;
+  display: inline-grid;
+  place-items: center;
+}
+
+.report-button:hover {
+  background: #165b5a;
+}
+
 .ghost-button {
   border: 0;
   background: transparent;
@@ -479,6 +492,13 @@ label {
 
 .panel-header .danger-button {
   white-space: nowrap;
+}
+
+.panel-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
 }
 
 .file-button input {
@@ -767,6 +787,12 @@ td:last-child {
     gap: 10px;
   }
 
+  .panel-actions {
+    display: grid;
+    grid-template-columns: 1fr;
+    justify-content: stretch;
+  }
+
   .search-input {
     max-width: none;
     width: 100%;
@@ -891,6 +917,7 @@ td:last-child {
 
   .primary-button,
   .secondary-button,
+  .report-button,
   .ghost-button,
   .danger-button,
   label input,
