@@ -1,3 +1,7 @@
 data/*.db
 data/*.db-*
+data/initial-admin-password.txt
 *.log
+
+/video
+/image

@@ -2,6 +2,7 @@ const http = require("http");
 const fs = require("fs");
 const os = require("os");
 const path = require("path");
+const crypto = require("crypto");
 const { DatabaseSync } = require("node:sqlite");
 
 const root = __dirname;
@@ -18,6 +19,8 @@ const types = {
 
 fs.mkdirSync(dataDir, { recursive: true });
 const db = new DatabaseSync(dbPath);
+let initialCredentialMessage = "";
+const sessions = new Map();
 initDatabase();
 
 http
@@ -36,8 +39,11 @@ http
   })
   .listen(port, "0.0.0.0", () => {
     const localUrls = getLocalUrls();
-    console.log(`Mooncake 94 berjalan di PC ini: http://127.0.0.1:${port}`);
+    console.log(`moncake94 berjalan di PC ini: http://127.0.0.1:${port}`);
     console.log(`Database lokal: ${dbPath}`);
+    if (initialCredentialMessage) {
+      console.log(initialCredentialMessage);
+    }
     console.log("");
     console.log("Untuk HP/tablet di WiFi yang sama, buka salah satu alamat ini:");
     localUrls.forEach((url) => console.log(`- ${url}`));
@@ -53,6 +59,12 @@ function initDatabase() {
     CREATE TABLE IF NOT EXISTS settings (
       key TEXT PRIMARY KEY,
       value TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS users (
+      username TEXT PRIMARY KEY,
+      password_hash TEXT NOT NULL,
+      role TEXT NOT NULL DEFAULT 'admin'
     );
 
     CREATE TABLE IF NOT EXISTS products (
@@ -89,9 +101,77 @@ function initDatabase() {
   `);
 
   db.prepare("INSERT OR IGNORE INTO settings (key, value) VALUES ('branchName', 'Cabang Utama')").run();
+  createInitialUserIfNeeded();
+}
+
+function createInitialUserIfNeeded() {
+  const existingUser = db.prepare("SELECT 1 FROM users LIMIT 1").get();
+  if (existingUser) return;
+
+  const passwordPath = path.join(dataDir, "initial-admin-password.txt");
+  const password = createTemporaryPassword();
+  fs.writeFileSync(passwordPath, `Username: cabangutama\nPassword: ${password}\n`, "utf8");
+  db.prepare("INSERT INTO users (username, password_hash, role) VALUES (?, ?, 'admin')")
+    .run("cabangutama", hashPassword(password));
+  initialCredentialMessage = `Login awal tersimpan di: ${passwordPath}`;
 }
 
 async function handleApi(request, response, url) {
+  if (request.method === "GET" && url.pathname === "/api/session") {
+    const user = getSessionUser(request);
+    sendJson(response, 200, { authenticated: Boolean(user), user });
+    return;
+  }
+
+  if (request.method === "POST" && url.pathname === "/api/login") {
+    const { username, password } = await readJson(request);
+    const user = db.prepare("SELECT username, password_hash, role FROM users WHERE username = ?").get(String(username || "").trim());
+    if (!user || user.password_hash !== hashPassword(String(password || ""))) {
+      sendJson(response, 401, { error: "Username atau password salah." });
+      return;
+    }
+
+    const token = createId();
+    sessions.set(token, { username: user.username, role: user.role });
+    sendJson(response, 200, { token, user: { username: user.username, role: user.role } });
+    return;
+  }
+
+  if (request.method === "POST" && url.pathname === "/api/logout") {
+    const token = getBearerToken(request);
+    if (token) sessions.delete(token);
+    sendJson(response, 200, { ok: true });
+    return;
+  }
+
+  const user = getSessionUser(request);
+  if (!user) {
+    sendJson(response, 401, { error: "Silakan login terlebih dahulu." });
+    return;
+  }
+
+  if (request.method === "POST" && url.pathname === "/api/change-password") {
+    const { currentPassword, newPassword } = await readJson(request);
+    const account = db.prepare("SELECT username, password_hash FROM users WHERE username = ?").get(user.username);
+    if (!account || account.password_hash !== hashPassword(String(currentPassword || ""))) {
+      sendJson(response, 400, { error: "Password lama salah." });
+      return;
+    }
+
+    if (String(newPassword || "").length < 6) {
+      sendJson(response, 400, { error: "Password baru minimal 6 karakter." });
+      return;
+    }
+
+    db.prepare("UPDATE users SET password_hash = ? WHERE username = ?")
+      .run(hashPassword(String(newPassword)), user.username);
+    sessions.forEach((session, token) => {
+      if (session.username === user.username) sessions.delete(token);
+    });
+    sendJson(response, 200, { ok: true });
+    return;
+  }
+
   if (request.method === "GET" && url.pathname === "/api/state") {
     sendJson(response, 200, getState());
     return;
@@ -386,8 +466,26 @@ function sendJson(response, status, data) {
   response.end(JSON.stringify(data));
 }
 
+function hashPassword(password) {
+  return crypto.createHash("sha256").update(password).digest("hex");
+}
+
+function getBearerToken(request) {
+  const header = request.headers.authorization || "";
+  return header.startsWith("Bearer ") ? header.slice(7) : "";
+}
+
+function getSessionUser(request) {
+  const token = getBearerToken(request);
+  return token ? sessions.get(token) || null : null;
+}
+
 function createId() {
   return `id-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
+function createTemporaryPassword() {
+  return crypto.randomBytes(6).toString("base64url");
 }
 
 function localTimestampKey(date = new Date()) {

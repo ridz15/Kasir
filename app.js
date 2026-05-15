@@ -1,6 +1,9 @@
 const STORAGE_KEY = "mooncake-94-data-v1";
 const DEFAULT_CATEGORIES = ["Roti", "Kue", "Pastry", "Minuman"];
 const OTHER_CATEGORY = "Lainnya";
+const STORE_PHONE = "+6287877530387";
+const STORE_INSTAGRAM = "Moncake94";
+const STORE_ADDRESS = "Jl. Danau Limboto Blok C-1 no.5, RT.13/RW.5, Pejompongan, Bend. Hilir, Kecamatan Tanah Abang, Kota Jakarta Pusat, Daerah Khusus Ibukota Jakarta 10210";
 
 const defaultProducts = [
   { id: createId(), name: "Roti Tawar", category: "Roti", price: 18000, stock: 20, minStock: 5 },
@@ -17,6 +20,18 @@ let activeView = "cashier";
 let currentDayKey = todayKey();
 
 const els = {
+  loginScreen: document.getElementById("loginScreen"),
+  loginForm: document.getElementById("loginForm"),
+  loginUsername: document.getElementById("loginUsername"),
+  loginPassword: document.getElementById("loginPassword"),
+  logoutButton: document.getElementById("logoutButton"),
+  openPasswordModal: document.getElementById("openPasswordModal"),
+  passwordModal: document.getElementById("passwordModal"),
+  passwordForm: document.getElementById("passwordForm"),
+  currentPassword: document.getElementById("currentPassword"),
+  newPassword: document.getElementById("newPassword"),
+  confirmPassword: document.getElementById("confirmPassword"),
+  closePasswordModal: document.getElementById("closePasswordModal"),
   navItems: document.querySelectorAll(".nav-item"),
   views: {
     cashier: document.getElementById("cashierView"),
@@ -116,10 +131,12 @@ async function loadState() {
 }
 
 async function apiRequest(path, options = {}) {
+  const token = sessionStorage.getItem("mooncake-94-session-token");
   const response = await fetch(path, {
     ...options,
     headers: {
       "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...(options.headers || {})
     }
   });
@@ -128,6 +145,86 @@ async function apiRequest(path, options = {}) {
     throw new Error(data.error || "Terjadi kesalahan server.");
   }
   return data;
+}
+
+async function login(event) {
+  event.preventDefault();
+  try {
+    const data = await apiRequest("/api/login", {
+      method: "POST",
+      body: JSON.stringify({
+        username: els.loginUsername.value.trim(),
+        password: els.loginPassword.value
+      })
+    });
+    sessionStorage.setItem("mooncake-94-session-token", data.token);
+    els.loginPassword.value = "";
+    els.loginScreen.classList.add("hidden");
+    await loadState();
+    render();
+    showToast("Login berhasil.");
+  } catch (error) {
+    showToast(error.message);
+  }
+}
+
+async function logout() {
+  if (API_ENABLED) {
+    try {
+      await apiRequest("/api/logout", { method: "POST" });
+    } catch {
+      // Session may already be gone.
+    }
+  }
+
+  sessionStorage.removeItem("mooncake-94-session-token");
+  cart = [];
+  els.loginScreen.classList.remove("hidden");
+  els.loginUsername.focus();
+  showToast("Logout berhasil.");
+}
+
+function openPasswordModal() {
+  els.passwordModal.classList.remove("hidden");
+  els.currentPassword.focus();
+}
+
+function closePasswordModal() {
+  els.passwordForm.reset();
+  els.passwordModal.classList.add("hidden");
+}
+
+async function changePassword(event) {
+  event.preventDefault();
+  const newPassword = els.newPassword.value;
+  const confirmPassword = els.confirmPassword.value;
+
+  if (newPassword.length < 6) {
+    showToast("Password baru minimal 6 karakter.");
+    return;
+  }
+
+  if (newPassword !== confirmPassword) {
+    showToast("Konfirmasi password baru tidak sama.");
+    return;
+  }
+
+  try {
+    await apiRequest("/api/change-password", {
+      method: "POST",
+      body: JSON.stringify({
+        currentPassword: els.currentPassword.value,
+        newPassword
+      })
+    });
+    closePasswordModal();
+    sessionStorage.removeItem("mooncake-94-session-token");
+    els.loginScreen.classList.remove("hidden");
+    els.loginUsername.focus();
+    showToast("Password berhasil diganti. Silakan login ulang.");
+  } catch (error) {
+    showToast(error.message);
+  }
 }
 
 function createId() {
@@ -590,25 +687,58 @@ function printReceipt(transaction) {
         <title>${transaction.receiptNumber}</title>
         <style>
           body { font-family: Arial, sans-serif; width: 280px; margin: 0 auto; color: #111; }
-          h1 { font-size: 18px; text-align: center; margin: 18px 0 4px; }
+          h1 { font-size: 20px; text-align: center; margin: 16px 0 6px; letter-spacing: 0; }
           p { text-align: center; margin: 0 0 12px; font-size: 12px; }
+          .store-info { line-height: 1.35; margin-bottom: 8px; }
+          .contact-row { display: flex; justify-content: center; gap: 8px; margin: 4px 0; }
+          .contact-item { display: inline-flex; align-items: center; gap: 3px; white-space: nowrap; }
+          .icon { width: 12px; height: 12px; display: inline-block; vertical-align: -2px; }
+          .store-address { display: block; margin: 6px auto 0; max-width: 250px; }
+          .receipt-meta { border-top: 1px dashed #999; border-bottom: 1px dashed #999; padding: 8px 0; margin-bottom: 8px; }
           table { width: 100%; border-collapse: collapse; font-size: 12px; }
           td { padding: 6px 0; border-bottom: 1px dashed #bbb; vertical-align: top; }
           td:last-child { text-align: right; white-space: nowrap; }
           .total td { font-weight: bold; border-bottom: 0; }
-          .thanks { margin-top: 16px; }
+          .receipt-note {
+            margin: 14px 0 10px;
+            padding: 0 8px;
+            line-height: 1.35;
+            font-style: italic;
+          }
+          .thanks { margin-top: 10px; }
           @media print { button { display: none; } body { width: auto; } }
         </style>
       </head>
       <body>
-        <h1>Mooncake 94</h1>
-        <p>${escapeHtml(transaction.branchName)}<br>${transaction.receiptNumber}<br>${formatDateTime(transaction.createdAt)}</p>
+        <h1>Moncake94</h1>
+        <p class="store-info">
+          ${escapeHtml(transaction.branchName)}<br>
+          <span class="contact-row">
+            <span class="contact-item">
+              <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+                <path fill="#111" d="M12 2.2c3.2 0 3.6 0 4.9.1 1.2.1 1.9.3 2.3.5.6.2 1 .5 1.5 1s.8.9 1 1.5c.2.4.4 1.1.5 2.3.1 1.3.1 1.7.1 4.9s0 3.6-.1 4.9c-.1 1.2-.3 1.9-.5 2.3-.2.6-.5 1-1 1.5s-.9.8-1.5 1c-.4.2-1.1.4-2.3.5-1.3.1-1.7.1-4.9.1s-3.6 0-4.9-.1c-1.2-.1-1.9-.3-2.3-.5-.6-.2-1-.5-1.5-1s-.8-.9-1-1.5c-.2-.4-.4-1.1-.5-2.3-.1-1.3-.1-1.7-.1-4.9s0-3.6.1-4.9c.1-1.2.3-1.9.5-2.3.2-.6.5-1 1-1.5s.9-.8 1.5-1c.4-.2 1.1-.4 2.3-.5 1.3-.1 1.7-.1 4.9-.1Zm0 1.8c-3.1 0-3.5 0-4.8.1-1.1.1-1.6.2-2 .4-.5.2-.8.4-1.1.7-.4.4-.6.7-.8 1.1-.2.4-.3.9-.4 2-.1 1.3-.1 1.7-.1 4.8s0 3.5.1 4.8c.1 1.1.2 1.6.4 2 .2.5.4.8.8 1.1.4.4.7.6 1.1.8.4.2.9.3 2 .4 1.3.1 1.7.1 4.8.1s3.5 0 4.8-.1c1.1-.1 1.6-.2 2-.4.5-.2.8-.4 1.1-.8.4-.4.6-.7.8-1.1.2-.4.3-.9.4-2 .1-1.3.1-1.7.1-4.8s0-3.5-.1-4.8c-.1-1.1-.2-1.6-.4-2-.2-.5-.4-.8-.8-1.1-.4-.4-.7-.6-1.1-.7-.4-.2-.9-.3-2-.4-1.3-.1-1.7-.1-4.8-.1Zm0 3.2a4.8 4.8 0 1 1 0 9.6 4.8 4.8 0 0 1 0-9.6Zm0 1.8a3 3 0 1 0 0 6.1 3 3 0 0 0 0-6.1Zm5-3.1a1.1 1.1 0 1 1 0 2.2 1.1 1.1 0 0 1 0-2.2Z"/>
+              </svg>
+              ${escapeHtml(STORE_INSTAGRAM)}
+            </span>
+            <span class="contact-item">
+              <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+                <path fill="#111" d="M20 3.9A10 10 0 0 0 3.4 15.2L2 22l7-1.3A10 10 0 0 0 20 3.9ZM12 20a8 8 0 0 1-4.1-1.1l-.3-.2-4.1.8.8-4-.2-.4A8 8 0 1 1 12 20Zm4.4-5.8c-.2-.1-1.4-.7-1.6-.8-.2-.1-.4-.1-.6.1-.2.3-.6.8-.8.9-.1.2-.3.2-.5.1-1.5-.7-2.5-1.3-3.5-3-.2-.2 0-.4.1-.5l.4-.5c.1-.2.2-.3.3-.5.1-.2 0-.4 0-.5l-.7-1.6c-.2-.4-.4-.4-.6-.4h-.5c-.2 0-.5.1-.7.3-.2.2-.9.9-.9 2.2s.9 2.5 1 2.7c.1.2 1.8 2.8 4.4 3.9.6.3 1.1.4 1.5.5.6.2 1.2.2 1.6.1.5-.1 1.4-.6 1.6-1.1.2-.6.2-1 .2-1.1-.1-.1-.3-.2-.5-.3Z"/>
+              </svg>
+              ${escapeHtml(STORE_PHONE)}
+            </span>
+          </span>
+          <span class="store-address">${escapeHtml(STORE_ADDRESS)}</span>
+        </p>
+        <p class="receipt-meta">${transaction.receiptNumber}<br>${formatDateTime(transaction.createdAt)}</p>
         <table>
           ${rows}
           <tr class="total"><td>Total</td><td>${formatCurrency(transaction.total)}</td></tr>
           <tr><td>Tunai</td><td>${formatCurrency(transaction.cash)}</td></tr>
           <tr><td>Kembalian</td><td>${formatCurrency(transaction.change)}</td></tr>
         </table>
+        <p class="receipt-note">
+          "Jika makanan ini terasa lezat ucapkanlah Maa Syaa Allah Tabarakallah Karena Hanya Allah SWT yang pantas di puji"
+        </p>
         <p class="thanks">Terima kasih</p>
         <button onclick="window.print()">Print</button>
         <script>window.onload = () => window.print();<\/script>
@@ -711,6 +841,9 @@ function editProduct(productId) {
 async function deleteProduct(productId) {
   const product = getProduct(productId);
   if (!product) return;
+
+  const confirmed = window.confirm(`Hapus produk "${product.name}"? Jika produk pernah terjual, produk tidak dihapus dari riwayat dan stok hanya dibuat 0.`);
+  if (!confirmed) return;
 
   if (API_ENABLED) {
     try {
@@ -830,7 +963,7 @@ function exportData() {
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;
-  link.download = `backup-mooncake-94-${todayKey()}.json`;
+  link.download = `backup-moncake94-${todayKey()}.json`;
   link.click();
   URL.revokeObjectURL(url);
 }
@@ -919,6 +1052,11 @@ els.historyList.addEventListener("click", (event) => {
   if (transaction) printReceipt(transaction);
 });
 
+els.loginForm.addEventListener("submit", login);
+els.logoutButton.addEventListener("click", logout);
+els.openPasswordModal.addEventListener("click", openPasswordModal);
+els.closePasswordModal.addEventListener("click", closePasswordModal);
+els.passwordForm.addEventListener("submit", changePassword);
 els.productForm.addEventListener("submit", saveProduct);
 els.productCategory.addEventListener("change", toggleManualCategory);
 els.deleteCategory.addEventListener("click", deleteSelectedCategory);
@@ -941,8 +1079,37 @@ els.importData.addEventListener("change", importData);
 initApp();
 
 async function initApp() {
-  await loadState();
-  render();
+  if (!API_ENABLED) {
+    els.loginScreen.classList.add("hidden");
+    await loadState();
+    render();
+    return;
+  }
+
+  const token = sessionStorage.getItem("mooncake-94-session-token");
+  if (!token) {
+    els.loginScreen.classList.remove("hidden");
+    els.loginUsername.focus();
+    return;
+  }
+
+  try {
+    const session = await apiRequest("/api/session");
+    if (!session.authenticated) {
+      sessionStorage.removeItem("mooncake-94-session-token");
+      els.loginScreen.classList.remove("hidden");
+      els.loginUsername.focus();
+      return;
+    }
+
+    els.loginScreen.classList.add("hidden");
+    await loadState();
+    render();
+  } catch {
+    sessionStorage.removeItem("mooncake-94-session-token");
+    els.loginScreen.classList.remove("hidden");
+    els.loginUsername.focus();
+  }
 }
 
 setInterval(() => {

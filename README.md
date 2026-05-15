@@ -1,17 +1,19 @@
-# Mooncake 94
+# moncake94
 
 Aplikasi kasir lokal untuk toko bakery satu cabang. Aplikasi berjalan dari PC kasir, bisa dibuka dari HP/tablet di WiFi yang sama, dan menyimpan data utama di SQLite lokal.
 
 ## Cara menjalankan
 
-1. Klik dua kali file `Jalankan Mooncake 94.bat`.
-2. Browser akan terbuka otomatis ke aplikasi Mooncake 94.
+1. Klik dua kali file `Jalankan moncake94.bat`.
+2. Browser akan terbuka otomatis ke aplikasi moncake94.
 3. Jika tidak terbuka otomatis, buka `http://127.0.0.1:4173`.
 
-Data aplikasi tersimpan di:
+Login menggunakan username dan password kasir yang dibuat untuk toko. Setelah masuk, password bisa diganti dari tombol `Ganti Password`.
+
+Data aplikasi tersimpan di folder:
 
 ```text
-data/mooncake94.db
+data/
 ```
 
 File database ini bersifat lokal dan tidak ikut di-push ke GitHub.
@@ -19,7 +21,7 @@ File database ini bersifat lokal dan tidak ikut di-push ke GitHub.
 ## Buka dari HP atau tablet
 
 1. Pastikan PC kasir dan HP/tablet memakai WiFi yang sama.
-2. Klik dua kali `Jalankan Mooncake 94.bat` di PC kasir.
+2. Klik dua kali `Jalankan moncake94.bat` di PC kasir.
 3. Lihat jendela yang terbuka. Di sana akan muncul alamat seperti `http://192.168.1.10:4173`.
 4. Buka alamat tersebut di browser HP/tablet.
 5. Biarkan PC kasir dan jendela server tetap menyala selama aplikasi dipakai.
@@ -47,6 +49,6 @@ Cara alternatif:
 
 ## Catatan data
 
-Saat aplikasi dibuka lewat `Jalankan Mooncake 94.bat`, data tersimpan di SQLite lokal. Jika file `index.html` dibuka langsung tanpa server, aplikasi masih bisa berjalan dengan penyimpanan browser sebagai fallback, tetapi mode utama yang disarankan adalah lewat launcher.
+Saat aplikasi dibuka lewat `Jalankan moncake94.bat`, data tersimpan di SQLite lokal. Jika file `index.html` dibuka langsung tanpa server, aplikasi masih bisa berjalan dengan penyimpanan browser sebagai fallback, tetapi mode utama yang disarankan adalah lewat launcher.
 
 Tetap lakukan `Backup Data` secara rutin, terutama setelah tutup toko.

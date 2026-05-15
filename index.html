@@ -3,17 +3,36 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Mooncake 94</title>
+    <title>moncake94</title>
     <link rel="icon" type="image/png" href="public/mooncake94.png" />
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
+    <section class="login-screen" id="loginScreen">
+      <form class="login-card" id="loginForm">
+        <img class="login-logo" src="public/mooncake94.png" alt="moncake94" />
+        <div>
+          <h1>moncake94</h1>
+          <p>Masuk untuk membuka kasir.</p>
+        </div>
+        <label>
+          Username
+          <input id="loginUsername" autocomplete="username" required placeholder="cabangutama" />
+        </label>
+        <label>
+          Password
+          <input id="loginPassword" autocomplete="current-password" required type="password" placeholder="Password" />
+        </label>
+        <button class="primary-button" type="submit">Masuk</button>
+      </form>
+    </section>
+
     <div class="app-shell">
       <aside class="sidebar">
         <div class="brand">
-          <img class="brand-mark" src="public/mooncake94.png" alt="Mooncake 94" />
+          <img class="brand-mark" src="public/mooncake94.png" alt="moncake94" />
           <div>
-            <h1>Mooncake 94</h1>
+            <h1>moncake94</h1>
             <p>Cabang Utama</p>
           </div>
         </div>
@@ -38,6 +57,8 @@
             <h2 id="viewTitle">Kasir</h2>
           </div>
           <div class="topbar-actions">
+            <button class="secondary-button" id="openPasswordModal">Ganti Password</button>
+            <button class="secondary-button" id="logoutButton">Logout</button>
             <button class="secondary-button" id="exportData">Backup Data</button>
             <label class="secondary-button file-button">
               Import Data
@@ -213,6 +234,31 @@
         </section>
       </main>
     </div>
+
+    <section class="modal hidden" id="passwordModal">
+      <form class="modal-card" id="passwordForm">
+        <div>
+          <h2>Ganti Password</h2>
+          <p>Gunakan password baru minimal 6 karakter.</p>
+        </div>
+        <label>
+          Password lama
+          <input id="currentPassword" autocomplete="current-password" required type="password" />
+        </label>
+        <label>
+          Password baru
+          <input id="newPassword" autocomplete="new-password" required type="password" />
+        </label>
+        <label>
+          Ulangi password baru
+          <input id="confirmPassword" autocomplete="new-password" required type="password" />
+        </label>
+        <div class="modal-actions">
+          <button class="secondary-button" id="closePasswordModal" type="button">Batal</button>
+          <button class="primary-button" type="submit">Simpan Password</button>
+        </div>
+      </form>
+    </section>
 
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
     <script src="app.js"></script>
