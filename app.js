@@ -2,8 +2,43 @@ const STORAGE_KEY = "mooncake-94-data-v1";
 const DEFAULT_CATEGORIES = ["Roti", "Kue", "Pastry", "Minuman"];
 const OTHER_CATEGORY = "Lainnya";
 const STORE_PHONE = "+6287877530387";
-const STORE_INSTAGRAM = "Moncake94";
+const STORE_INSTAGRAM = "moncake94";
 const STORE_ADDRESS = "Jl. Danau Limboto Blok C-1 no.5, RT.13/RW.5, Pejompongan, Bend. Hilir, Kecamatan Tanah Abang, Kota Jakarta Pusat, Daerah Khusus Ibukota Jakarta 10210";
+const PRODUCT_VARIANTS = [
+  {
+    baseName: "Bolu Pisang Keju",
+    category: "Aneka Cake/Bolu",
+    variants: [
+      { label: "Slice", productName: "Bolu Pisang Keju Slice" },
+      { label: "Whole", productName: "Bolu Pisang Keju Whole" }
+    ]
+  },
+  {
+    baseName: "Klappertart",
+    category: "Dessert",
+    variants: [
+      { label: "S", productName: "Klappertart S" },
+      { label: "L", productName: "Klappertart L" }
+    ]
+  },
+  {
+    baseName: "Marmer Cake",
+    category: "Aneka Cake/Bolu",
+    variants: [
+      { label: "Satu Slice", productName: "Marmer Cake Slice" },
+      { label: "Dua Slice", productName: "Marmer Cake 2 Slice" },
+      { label: "Whole", productName: "Marmer Cake Whole" }
+    ]
+  },
+  {
+    baseName: "Marmer Choco Cheese",
+    category: "Aneka Cake/Bolu",
+    variants: [
+      { label: "Slice", productName: "Marmer Choco Cheese Slice" },
+      { label: "Whole", productName: "Marmer Choco Cheese Whole" }
+    ]
+  }
+];
 
 const defaultProducts = [
   { id: createId(), name: "Roti Tawar", category: "Roti", price: 18000, stock: 20, minStock: 5 },
@@ -44,6 +79,10 @@ const els = {
   reportStartDate: document.getElementById("reportStartDate"),
   reportEndDate: document.getElementById("reportEndDate"),
   closeTransactionReport: document.getElementById("closeTransactionReport"),
+  variantModal: document.getElementById("variantModal"),
+  variantTitle: document.getElementById("variantTitle"),
+  variantList: document.getElementById("variantList"),
+  closeVariantModal: document.getElementById("closeVariantModal"),
   navItems: document.querySelectorAll(".nav-item"),
   views: {
     cashier: document.getElementById("cashierView"),
@@ -64,6 +103,13 @@ const els = {
   clearCart: document.getElementById("clearCart"),
   finishTransaction: document.getElementById("finishTransaction"),
   productForm: document.getElementById("productForm"),
+  productTypeOptions: document.querySelectorAll('input[name="productType"]'),
+  singleProductFields: document.getElementById("singleProductFields"),
+  variantProductFields: document.getElementById("variantProductFields"),
+  variantCount: document.getElementById("variantCount"),
+  applyVariantCount: document.getElementById("applyVariantCount"),
+  variantRows: document.getElementById("variantRows"),
+  addVariantRow: document.getElementById("addVariantRow"),
   productName: document.getElementById("productName"),
   productCategory: document.getElementById("productCategory"),
   customCategory: document.getElementById("customCategory"),
@@ -93,6 +139,7 @@ function getInitialState() {
   return {
     branchName: "Cabang Utama",
     products: [],
+    productVariants: [],
     deletedCategories: [],
     transactions: []
   };
@@ -104,6 +151,7 @@ function loadLocalState() {
     return {
       branchName: "Cabang Utama",
       products: defaultProducts,
+      productVariants: [],
       deletedCategories: [],
       transactions: []
     };
@@ -114,6 +162,7 @@ function loadLocalState() {
     return {
       branchName: parsed.branchName || "Cabang Utama",
       products: Array.isArray(parsed.products) ? parsed.products : defaultProducts,
+      productVariants: Array.isArray(parsed.productVariants) ? parsed.productVariants : [],
       deletedCategories: Array.isArray(parsed.deletedCategories) ? parsed.deletedCategories : [],
       transactions: Array.isArray(parsed.transactions) ? parsed.transactions : []
     };
@@ -121,6 +170,7 @@ function loadLocalState() {
     return {
       branchName: "Cabang Utama",
       products: defaultProducts,
+      productVariants: [],
       deletedCategories: [],
       transactions: []
     };
@@ -309,6 +359,62 @@ function getProduct(id) {
   return state.products.find((product) => product.id === id);
 }
 
+function getAllProductVariantGroups() {
+  const groups = new Map(PRODUCT_VARIANTS.map((group) => [group.baseName.toLowerCase(), group]));
+  (state.productVariants || []).forEach((group) => {
+    if (!group || !group.baseName || !Array.isArray(group.variants)) return;
+    groups.set(group.baseName.toLowerCase(), group);
+  });
+  return [...groups.values()];
+}
+
+function getSaleProducts() {
+  const variantProductNames = new Set(
+    getAllProductVariantGroups().flatMap((group) => group.variants.map((variant) => variant.productName.toLowerCase()))
+  );
+  const variantGroups = getAllProductVariantGroups().map((group) => {
+    const variants = group.variants
+      .map((variant) => {
+        const product = state.products.find((item) => item.name.toLowerCase() === variant.productName.toLowerCase());
+        return product ? { ...product, optionLabel: variant.label } : null;
+      })
+      .filter(Boolean);
+
+    if (!variants.length) return null;
+
+    const prices = variants.map((variant) => variant.price);
+    const minPrice = Math.min(...prices);
+    const maxPrice = Math.max(...prices);
+    return {
+      id: `variant-${group.baseName}`,
+      name: group.baseName,
+      category: group.category,
+      price: minPrice,
+      priceText: minPrice === maxPrice ? formatCurrency(minPrice) : `${formatCurrency(minPrice)} - ${formatCurrency(maxPrice)}`,
+      stock: variants.reduce((sum, variant) => sum + variant.stock, 0),
+      minStock: variants.reduce((sum, variant) => sum + variant.minStock, 0),
+      variantGroup: group.baseName
+    };
+  }).filter(Boolean);
+  const regularProducts = state.products.filter((product) => !variantProductNames.has(product.name.toLowerCase()));
+
+  return [...variantGroups, ...regularProducts].sort((a, b) => a.name.localeCompare(b.name, "id", { sensitivity: "base" }));
+}
+
+function getVariantGroup(baseName) {
+  const config = getAllProductVariantGroups().find((group) => group.baseName === baseName);
+  if (!config) return null;
+
+  const variants = config.variants
+    .map((variant) => {
+      const product = state.products.find((item) => item.name.toLowerCase() === variant.productName.toLowerCase());
+      return product ? { ...product, optionLabel: variant.label } : null;
+    })
+    .filter(Boolean);
+
+  return { ...config, variants };
+}
+
 function cartTotal() {
   return cart.reduce((total, item) => total + item.price * item.qty, 0);
 }
@@ -336,7 +442,7 @@ function setView(view) {
 
 function renderProducts() {
   const keyword = els.productSearch.value.trim().toLowerCase();
-  const products = state.products.filter((product) => {
+  const products = getSaleProducts().filter((product) => {
     return `${product.name} ${product.category}`.toLowerCase().includes(keyword);
   });
 
@@ -349,15 +455,139 @@ function renderProducts() {
     .map((product) => {
       const status = product.stock <= 0 ? "empty" : product.stock <= product.minStock ? "low" : "";
       const label = product.stock <= 0 ? "Habis" : `Stok ${product.stock}`;
+      const actionAttribute = product.variantGroup
+        ? `data-variant-group="${escapeHtml(product.variantGroup)}"`
+        : `data-add-product="${product.id}"`;
       return `
-        <button class="product-card" data-add-product="${product.id}" ${product.stock <= 0 ? "disabled" : ""}>
+        <button class="product-card" ${actionAttribute} ${product.stock <= 0 ? "disabled" : ""}>
           <strong>${escapeHtml(product.name)}</strong>
-          <span>${escapeHtml(product.category)} - ${formatCurrency(product.price)}</span>
+          <span>${escapeHtml(product.category)} - ${escapeHtml(product.priceText || formatCurrency(product.price))}</span>
           <span class="stock-badge ${status}">${label}</span>
         </button>
       `;
     })
     .join("");
+}
+
+function openVariantModal(baseName) {
+  const group = getVariantGroup(baseName);
+  if (!group || !group.variants.length) return;
+
+  els.variantTitle.textContent = group.baseName;
+  els.variantList.innerHTML = group.variants
+    .map((variant) => {
+      const displayName = `${group.baseName} - ${variant.optionLabel}`;
+      const status = variant.stock <= 0 ? "empty" : variant.stock <= variant.minStock ? "low" : "";
+      const label = variant.stock <= 0 ? "Habis" : `Stok ${variant.stock}`;
+      return `
+        <button
+          class="variant-option"
+          data-add-product="${variant.id}"
+          data-display-name="${escapeHtml(displayName)}"
+          ${variant.stock <= 0 ? "disabled" : ""}
+        >
+          <span>
+            <strong>${escapeHtml(variant.optionLabel)}</strong>
+            <small>${formatCurrency(variant.price)}</small>
+          </span>
+          <span class="stock-badge ${status}">${label}</span>
+        </button>
+      `;
+    })
+    .join("");
+  els.variantModal.classList.remove("hidden");
+}
+
+function closeVariantModal() {
+  els.variantModal.classList.add("hidden");
+}
+
+function selectedProductType() {
+  return [...els.productTypeOptions].find((option) => option.checked)?.value || "single";
+}
+
+function setProductType(type) {
+  els.productTypeOptions.forEach((option) => {
+    option.checked = option.value === type;
+  });
+  toggleProductTypeFields();
+}
+
+function toggleProductTypeFields() {
+  const isVariant = selectedProductType() === "variant";
+  els.singleProductFields.classList.toggle("hidden", isVariant);
+  els.variantProductFields.classList.toggle("hidden", !isVariant);
+  els.productPrice.required = !isVariant;
+  els.productStock.required = !isVariant;
+
+  if (isVariant && !els.variantRows.children.length) {
+    addVariantRow();
+    addVariantRow();
+  }
+}
+
+function addVariantRow(values = {}) {
+  const row = document.createElement("div");
+  row.className = "variant-form-row";
+  row.innerHTML = `
+    <div class="variant-form-grid">
+      <label>
+        Nama varian
+        <input class="variant-label-input" placeholder="Contoh: Slice" value="${escapeHtml(values.label || "")}" />
+      </label>
+      <label>
+        Harga
+        <input class="variant-price-input" inputmode="numeric" placeholder="Contoh: 10.000" value="${values.price ? formatMoneyInput(values.price) : ""}" />
+      </label>
+      <label>
+        Stok
+        <input class="variant-stock-input" type="number" min="0" placeholder="Contoh: 12" value="${Number(values.stock || 0)}" />
+      </label>
+      <label>
+        Batas stok rendah
+        <input class="variant-min-stock-input" type="number" min="0" value="${Number(values.minStock ?? 5)}" />
+      </label>
+    </div>
+    <button class="danger-button" type="button" data-remove-variant-row>Hapus Varian Ini</button>
+  `;
+  els.variantRows.appendChild(row);
+  els.variantCount.value = els.variantRows.children.length;
+}
+
+function setVariantRowCount() {
+  const targetCount = Math.max(1, Number(els.variantCount.value || 1));
+  while (els.variantRows.children.length < targetCount) {
+    addVariantRow();
+  }
+  while (els.variantRows.children.length > targetCount) {
+    els.variantRows.lastElementChild.remove();
+  }
+  els.variantCount.value = els.variantRows.children.length;
+}
+
+function getVariantRowsPayload(baseName) {
+  return [...els.variantRows.querySelectorAll(".variant-form-row")]
+    .map((row) => {
+      const label = row.querySelector(".variant-label-input").value.trim();
+      return {
+        label,
+        productName: `${baseName} ${label}`.trim(),
+        price: parseMoneyInput(row.querySelector(".variant-price-input").value),
+        stock: Number(row.querySelector(".variant-stock-input").value || 0),
+        minStock: Number(row.querySelector(".variant-min-stock-input").value || 0)
+      };
+    })
+    .filter((variant) => variant.label || variant.price || variant.stock);
+}
+
+function resetProductForm() {
+  els.productForm.reset();
+  delete els.productForm.dataset.editingId;
+  els.productMinStock.value = 5;
+  els.variantCount.value = 2;
+  els.customCategory.value = "";
+  els.variantRows.innerHTML = "";
+  setProductType("single");
 }
 
 function renderCart() {
@@ -577,7 +807,7 @@ function render() {
   renderReports();
 }
 
-function addToCart(productId) {
+function addToCart(productId, displayName) {
   const product = getProduct(productId);
   if (!product || product.stock <= 0) return;
 
@@ -593,7 +823,7 @@ function addToCart(productId) {
   } else {
     cart.push({
       id: product.id,
-      name: product.name,
+      name: displayName || product.name,
       price: product.price,
       qty: 1
     });
@@ -777,16 +1007,81 @@ async function saveProduct(event) {
   const category = els.productCategory.value === OTHER_CATEGORY
     ? els.customCategory.value.trim()
     : els.productCategory.value;
-  const price = parseMoneyInput(els.productPrice.value);
-  const stock = Number(els.productStock.value || 0);
-  const minStock = Number(els.productMinStock.value || 0);
+  const isVariantProduct = selectedProductType() === "variant" && !els.productForm.dataset.editingId;
 
-  if (!name || !category || price <= 0) {
-    showToast("Nama, kategori, dan harga produk wajib diisi.");
+  if (!name || !category) {
+    showToast("Nama dan kategori produk wajib diisi.");
     return;
   }
 
   const editingId = els.productForm.dataset.editingId;
+  if (isVariantProduct) {
+    const variants = getVariantRowsPayload(name);
+    const labels = new Set();
+    const hasInvalidVariant = variants.some((variant) => {
+      const key = variant.label.toLowerCase();
+      const duplicate = labels.has(key);
+      labels.add(key);
+      return !variant.label || variant.price <= 0 || duplicate;
+    });
+
+    if (variants.length < 2) {
+      showToast("Produk varian minimal punya 2 pilihan.");
+      return;
+    }
+
+    if (hasInvalidVariant) {
+      showToast("Nama varian tidak boleh kosong/duplikat, dan harga wajib diisi.");
+      return;
+    }
+
+    const payload = { baseName: name, category, variants };
+    if (API_ENABLED) {
+      try {
+        state = await apiRequest("/api/variant-products", {
+          method: "POST",
+          body: JSON.stringify(payload)
+        });
+      } catch (error) {
+        showToast(error.message);
+        return;
+      }
+    } else {
+      variants.forEach((variant) => {
+        const existing = state.products.find((product) => product.name.toLowerCase() === variant.productName.toLowerCase());
+        const productPayload = {
+          id: existing?.id || createId(),
+          name: variant.productName,
+          category,
+          price: variant.price,
+          stock: variant.stock,
+          minStock: variant.minStock
+        };
+        if (existing) Object.assign(existing, productPayload);
+        else state.products.push(productPayload);
+      });
+      state.productVariants = [
+        ...(state.productVariants || []).filter((group) => group.baseName.toLowerCase() !== name.toLowerCase()),
+        { baseName: name, category, variants: variants.map((variant) => ({ label: variant.label, productName: variant.productName })) }
+      ];
+      saveState();
+    }
+
+    resetProductForm();
+    render();
+    showToast("Produk varian berhasil ditambahkan.");
+    return;
+  }
+
+  const price = parseMoneyInput(els.productPrice.value);
+  const stock = Number(els.productStock.value || 0);
+  const minStock = Number(els.productMinStock.value || 0);
+
+  if (price <= 0) {
+    showToast("Harga produk wajib diisi.");
+    return;
+  }
+
   const productPayload = {
     id: editingId || createId(),
     name,
@@ -838,9 +1133,7 @@ async function saveProduct(event) {
     showToast("Produk baru berhasil ditambahkan.");
   }
 
-  els.productForm.reset();
-  els.productMinStock.value = 5;
-  els.customCategory.value = "";
+  resetProductForm();
   render();
 }
 
@@ -848,6 +1141,7 @@ function editProduct(productId) {
   const product = getProduct(productId);
   if (!product) return;
 
+  setProductType("single");
   els.productForm.dataset.editingId = product.id;
   els.productName.value = product.name;
   renderCategoryOptions(product.category);
@@ -996,6 +1290,7 @@ function exportProducts() {
     data: {
       branchName: state.branchName,
       products: state.products,
+      productVariants: state.productVariants || [],
       deletedCategories: state.deletedCategories || []
     }
   });
@@ -1231,6 +1526,7 @@ function importProducts(event) {
         ...state,
         branchName: productState.branchName || state.branchName,
         products: productState.products,
+        productVariants: productState.productVariants || [],
         deletedCategories: productState.deletedCategories || []
       };
 
@@ -1268,6 +1564,7 @@ function parseFullBackup(parsed) {
   return {
     branchName: data.branchName || "Cabang Utama",
     products: data.products,
+    productVariants: Array.isArray(data.productVariants) ? data.productVariants : [],
     deletedCategories: Array.isArray(data.deletedCategories) ? data.deletedCategories : [],
     transactions: data.transactions
   };
@@ -1286,6 +1583,7 @@ function parseProductsBackup(parsed) {
   return {
     branchName: data.branchName || "Cabang Utama",
     products: data.products,
+    productVariants: Array.isArray(data.productVariants) ? data.productVariants : [],
     deletedCategories: Array.isArray(data.deletedCategories) ? data.deletedCategories : []
   };
 }
@@ -1320,8 +1618,21 @@ els.navItems.forEach((button) => {
 });
 
 els.productGrid.addEventListener("click", (event) => {
+  const variantButton = event.target.closest("[data-variant-group]");
+  if (variantButton) {
+    openVariantModal(variantButton.dataset.variantGroup);
+    return;
+  }
+
   const button = event.target.closest("[data-add-product]");
   if (button) addToCart(button.dataset.addProduct);
+});
+
+els.variantList.addEventListener("click", (event) => {
+  const button = event.target.closest("[data-add-product]");
+  if (!button) return;
+  addToCart(button.dataset.addProduct, button.dataset.displayName);
+  closeVariantModal();
 });
 
 els.cartList.addEventListener("click", (event) => {
@@ -1361,7 +1672,33 @@ els.transactionExportForm.addEventListener("submit", exportTransactionHistory);
 els.openTransactionReport.addEventListener("click", openTransactionReportModal);
 els.closeTransactionReport.addEventListener("click", closeTransactionReportModal);
 els.transactionReportForm.addEventListener("submit", exportTransactionReport);
+els.closeVariantModal.addEventListener("click", closeVariantModal);
 els.productForm.addEventListener("submit", saveProduct);
+els.productTypeOptions.forEach((option) => option.addEventListener("change", toggleProductTypeFields));
+els.addVariantRow.addEventListener("click", () => addVariantRow());
+els.applyVariantCount.addEventListener("click", setVariantRowCount);
+els.variantCount.addEventListener("keydown", (event) => {
+  if (event.key === "Enter") {
+    event.preventDefault();
+    setVariantRowCount();
+  }
+});
+els.variantRows.addEventListener("input", (event) => {
+  if (event.target.matches(".variant-price-input")) {
+    applyMoneyFormat(event.target);
+  }
+});
+els.variantRows.addEventListener("click", (event) => {
+  const removeButton = event.target.closest("[data-remove-variant-row]");
+  if (!removeButton) return;
+  const rows = els.variantRows.querySelectorAll(".variant-form-row");
+  if (rows.length <= 1) {
+    showToast("Minimal sisakan satu baris varian.");
+    return;
+  }
+  removeButton.closest(".variant-form-row").remove();
+  els.variantCount.value = els.variantRows.children.length;
+});
 els.productCategory.addEventListener("change", toggleManualCategory);
 els.deleteCategory.addEventListener("click", deleteSelectedCategory);
 els.productPrice.addEventListener("input", () => applyMoneyFormat(els.productPrice));

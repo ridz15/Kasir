@@ -80,6 +80,20 @@ function initDatabase() {
       category TEXT PRIMARY KEY
     );
 
+    CREATE TABLE IF NOT EXISTS product_variant_groups (
+      base_name TEXT PRIMARY KEY,
+      category TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS product_variant_options (
+      base_name TEXT NOT NULL,
+      label TEXT NOT NULL,
+      product_name TEXT NOT NULL,
+      sort_order INTEGER NOT NULL DEFAULT 0,
+      PRIMARY KEY (base_name, label),
+      FOREIGN KEY (base_name) REFERENCES product_variant_groups(base_name) ON DELETE CASCADE
+    );
+
     CREATE TABLE IF NOT EXISTS transactions (
       id TEXT PRIMARY KEY,
       receipt_number TEXT NOT NULL,
@@ -184,6 +198,13 @@ async function handleApi(request, response, url) {
     return;
   }
 
+  if (request.method === "POST" && url.pathname === "/api/variant-products") {
+    const product = await readJson(request);
+    saveVariantProduct(product);
+    sendJson(response, 200, getState());
+    return;
+  }
+
   const stockMatch = url.pathname.match(/^\/api\/products\/([^/]+)\/stock$/);
   if (request.method === "POST" && stockMatch) {
     const { amount } = await readJson(request);
@@ -237,6 +258,21 @@ function getState() {
     ORDER BY name COLLATE NOCASE
   `).all();
   const deletedCategories = db.prepare("SELECT category FROM deleted_categories ORDER BY category COLLATE NOCASE").all().map((row) => row.category);
+  const variantGroups = db.prepare(`
+    SELECT base_name AS baseName, category
+    FROM product_variant_groups
+    ORDER BY base_name COLLATE NOCASE
+  `).all();
+  const variantOptions = db.prepare(`
+    SELECT label, product_name AS productName
+    FROM product_variant_options
+    WHERE base_name = ?
+    ORDER BY sort_order ASC, label COLLATE NOCASE
+  `);
+  const productVariants = variantGroups.map((group) => ({
+    ...group,
+    variants: variantOptions.all(group.baseName)
+  }));
   const transactions = db.prepare(`
     SELECT id, receipt_number AS receiptNumber, branch_name AS branchName, created_at AS createdAt,
       total, cash, change_amount AS change
@@ -254,7 +290,7 @@ function getState() {
     transaction.items = itemQuery.all(transaction.id);
   });
 
-  return { branchName, products, deletedCategories, transactions };
+  return { branchName, products, productVariants, deletedCategories, transactions };
 }
 
 function saveProduct(product) {
@@ -279,6 +315,64 @@ function saveProduct(product) {
       stock = excluded.stock,
       min_stock = excluded.min_stock
   `).run(id, name, category, price, Math.max(0, stock), Math.max(0, minStock));
+}
+
+function saveVariantProduct(product) {
+  const baseName = String(product.baseName || product.name || "").trim();
+  const category = String(product.category || "").trim();
+  const variants = Array.isArray(product.variants) ? product.variants : [];
+  const labels = new Set();
+
+  if (!baseName || !category || variants.length < 2) {
+    throw new Error("Produk varian wajib punya nama, kategori, dan minimal 2 varian.");
+  }
+
+  const normalizedVariants = variants.map((variant, index) => {
+    const label = String(variant.label || "").trim();
+    const key = label.toLowerCase();
+    const price = Number(variant.price || 0);
+    if (!label || labels.has(key) || price <= 0) {
+      throw new Error("Nama varian tidak boleh kosong/duplikat, dan harga wajib diisi.");
+    }
+    labels.add(key);
+
+    return {
+      id: String(variant.id || createId()),
+      label,
+      productName: String(variant.productName || `${baseName} ${label}`).trim(),
+      price,
+      stock: Number(variant.stock || 0),
+      minStock: Number(variant.minStock || 0),
+      sortOrder: index
+    };
+  });
+
+  const existingProduct = db.prepare("SELECT id FROM products WHERE LOWER(name) = LOWER(?) LIMIT 1");
+  db.exec("BEGIN IMMEDIATE");
+  try {
+    db.prepare("INSERT OR REPLACE INTO product_variant_groups (base_name, category) VALUES (?, ?)").run(baseName, category);
+    db.prepare("DELETE FROM product_variant_options WHERE base_name = ?").run(baseName);
+
+    normalizedVariants.forEach((variant) => {
+      const existing = existingProduct.get(variant.productName);
+      saveProduct({
+        id: existing?.id || variant.id,
+        name: variant.productName,
+        category,
+        price: variant.price,
+        stock: variant.stock,
+        minStock: variant.minStock
+      });
+      db.prepare(`
+        INSERT INTO product_variant_options (base_name, label, product_name, sort_order)
+        VALUES (?, ?, ?, ?)
+      `).run(baseName, variant.label, variant.productName, variant.sortOrder);
+    });
+    db.exec("COMMIT");
+  } catch (error) {
+    db.exec("ROLLBACK");
+    throw error;
+  }
 }
 
 function changeStock(productId, amount) {
@@ -323,9 +417,10 @@ function createTransaction(transaction) {
       }
 
       total += product.price * qty;
+      const displayName = String(item.name || product.name).trim();
       return {
         id: product.id,
-        name: product.name,
+        name: displayName || product.name,
         price: product.price,
         qty
       };
@@ -374,9 +469,24 @@ function importState(data) {
 
   db.exec("BEGIN IMMEDIATE");
   try {
-    db.exec("DELETE FROM transaction_items; DELETE FROM transactions; DELETE FROM products; DELETE FROM deleted_categories;");
+    db.exec("DELETE FROM transaction_items; DELETE FROM transactions; DELETE FROM product_variant_options; DELETE FROM product_variant_groups; DELETE FROM products; DELETE FROM deleted_categories;");
     db.prepare("INSERT OR REPLACE INTO settings (key, value) VALUES ('branchName', ?)").run(data.branchName || "Cabang Utama");
     data.products.forEach(saveProduct);
+    (data.productVariants || []).forEach((group) => {
+      db.prepare("INSERT OR REPLACE INTO product_variant_groups (base_name, category) VALUES (?, ?)")
+        .run(String(group.baseName || ""), String(group.category || ""));
+      (group.variants || []).forEach((variant, index) => {
+        db.prepare(`
+          INSERT INTO product_variant_options (base_name, label, product_name, sort_order)
+          VALUES (?, ?, ?, ?)
+        `).run(
+          String(group.baseName || ""),
+          String(variant.label || ""),
+          String(variant.productName || ""),
+          index
+        );
+      });
+    });
     (data.deletedCategories || []).forEach((category) => {
       db.prepare("INSERT OR IGNORE INTO deleted_categories (category) VALUES (?)").run(String(category).toLowerCase());
     });

@@ -120,9 +120,19 @@
                 </div>
               </div>
               <form class="product-form" id="productForm">
+                <div class="product-type-toggle" role="radiogroup" aria-label="Tipe produk">
+                  <label>
+                    <input name="productType" type="radio" value="single" checked />
+                    Produk biasa
+                  </label>
+                  <label>
+                    <input name="productType" type="radio" value="variant" />
+                    Produk dengan varian
+                  </label>
+                </div>
                 <label>
                   Nama produk
-                  <input id="productName" required placeholder="Contoh: Croissant Butter" />
+                  <input id="productName" required placeholder="Contoh: Marmer Cake" />
                 </label>
                 <label>
                   Kategori
@@ -142,18 +152,35 @@
                   <button class="secondary-button" id="deleteCategory" type="button">Hapus Kategori Terpilih</button>
                   <p>Kategori yang masih dipakai produk tidak bisa dihapus.</p>
                 </div>
-                <label>
-                  Harga jual
-                  <input id="productPrice" required inputmode="numeric" placeholder="Contoh: 15.000" />
-                </label>
-                <label>
-                  Stok saat ini
-                  <input id="productStock" required type="number" min="0" placeholder="Contoh: 24" />
-                </label>
-                <label>
-                  Batas stok rendah
-                  <input id="productMinStock" type="number" min="0" value="5" />
-                </label>
+                <div class="single-product-fields" id="singleProductFields">
+                  <label>
+                    Harga jual
+                    <input id="productPrice" required inputmode="numeric" placeholder="Contoh: 15.000" />
+                  </label>
+                  <label>
+                    Stok saat ini
+                    <input id="productStock" required type="number" min="0" placeholder="Contoh: 24" />
+                  </label>
+                  <label>
+                    Batas stok rendah
+                    <input id="productMinStock" type="number" min="0" value="5" />
+                  </label>
+                </div>
+                <div class="variant-product-fields hidden" id="variantProductFields">
+                  <div class="variant-count-control">
+                    <label>
+                      Jumlah varian
+                      <input id="variantCount" type="number" min="1" value="2" />
+                    </label>
+                    <button class="secondary-button" id="applyVariantCount" type="button">Atur Jumlah</button>
+                  </div>
+                  <div class="variant-form-header">
+                    <strong>Daftar varian</strong>
+                    <button class="secondary-button" id="addVariantRow" type="button">Tambah Varian</button>
+                  </div>
+                  <div class="variant-form-list" id="variantRows"></div>
+                  <p class="form-note">Contoh label: Slice, Whole, S, L. Nama produk stok akan dibuat otomatis.</p>
+                </div>
                 <button class="primary-button" type="submit">Simpan Produk</button>
               </form>
             </section>
@@ -315,6 +342,19 @@
           <button class="report-button" type="submit">Download CSV</button>
         </div>
       </form>
+    </section>
+
+    <section class="modal hidden" id="variantModal">
+      <div class="modal-card">
+        <div>
+          <h2 id="variantTitle">Pilih Varian</h2>
+          <p>Pilih ukuran produk yang masuk ke keranjang.</p>
+        </div>
+        <div class="variant-list" id="variantList"></div>
+        <div class="modal-actions single">
+          <button class="secondary-button" id="closeVariantModal" type="button">Batal</button>
+        </div>
+      </div>
     </section>
 
     <div class="toast" id="toast" role="status" aria-live="polite"></div>

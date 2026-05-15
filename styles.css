@@ -104,6 +104,47 @@ body {
   gap: 10px;
 }
 
+.modal-actions.single {
+  grid-template-columns: 1fr;
+}
+
+.variant-list {
+  display: grid;
+  gap: 10px;
+}
+
+.variant-option {
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface-soft);
+  padding: 13px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  text-align: left;
+}
+
+.variant-option:hover {
+  border-color: var(--brand);
+}
+
+.variant-option:disabled {
+  cursor: not-allowed;
+  opacity: 0.62;
+}
+
+.variant-option span:first-child {
+  display: grid;
+  gap: 3px;
+}
+
+.variant-option small {
+  color: var(--muted);
+  font-size: 13px;
+}
+
 button,
 input,
 select {
@@ -424,6 +465,73 @@ label {
 .product-form {
   display: grid;
   gap: 13px;
+}
+
+.product-type-toggle {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.product-type-toggle label {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  padding: 11px 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text);
+}
+
+.product-type-toggle input {
+  width: auto;
+}
+
+.single-product-fields,
+.variant-product-fields,
+.variant-form-list {
+  display: grid;
+  gap: 13px;
+}
+
+.variant-count-control {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: end;
+}
+
+.variant-form-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.variant-form-row {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface-soft);
+  padding: 12px;
+  display: grid;
+  gap: 10px;
+}
+
+.variant-form-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
+  gap: 10px;
+}
+
+.variant-form-row .danger-button {
+  justify-self: stretch;
+}
+
+.form-note {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
 }
 
 .category-tools {
@@ -909,6 +1017,12 @@ td:last-child {
   .stock-actions button[data-edit-product],
   .stock-actions button[data-delete-product] {
     grid-column: span 3;
+  }
+
+  .product-type-toggle,
+  .variant-count-control,
+  .variant-form-grid {
+    grid-template-columns: 1fr;
   }
 
   .payment-box {
