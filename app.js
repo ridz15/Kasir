@@ -917,7 +917,7 @@ async function finishTransaction() {
 }
 
 function printReceipt(transaction) {
-  const receiptWindow = window.open("", "_blank", "width=380,height=640");
+  const receiptWindow = window.open("", "_blank", "width=260,height=640");
   if (!receiptWindow) {
     showToast("Popup print diblokir browser.");
     return;
@@ -925,12 +925,16 @@ function printReceipt(transaction) {
 
   const rows = transaction.items
     .map((item) => `
-      <tr>
-        <td>${escapeHtml(item.name)}<br><small>${item.qty} x ${formatCurrency(item.price)}</small></td>
-        <td>${formatCurrency(item.price * item.qty)}</td>
-      </tr>
+      <div class="receipt-item">
+        <div class="item-main">
+          <span>${escapeHtml(item.name)}</span>
+          <strong>${formatCurrency(item.price * item.qty)}</strong>
+        </div>
+        <div class="item-sub">${item.qty} x ${formatCurrency(item.price)}</div>
+      </div>
     `)
     .join("");
+  const receiptHeightMm = Math.max(82, Math.min(180, 78 + (transaction.items.length * 14)));
 
   receiptWindow.document.write(`
     <!doctype html>
@@ -939,59 +943,62 @@ function printReceipt(transaction) {
         <meta charset="UTF-8" />
         <title>${transaction.receiptNumber}</title>
         <style>
-          body { font-family: Arial, sans-serif; width: 280px; margin: 0 auto; color: #111; }
-          h1 { font-size: 20px; text-align: center; margin: 16px 0 6px; letter-spacing: 0; }
-          p { text-align: center; margin: 0 0 12px; font-size: 12px; }
-          .store-info { line-height: 1.35; margin-bottom: 8px; }
-          .contact-row { display: flex; justify-content: center; gap: 8px; margin: 4px 0; }
-          .contact-item { display: inline-flex; align-items: center; gap: 3px; white-space: nowrap; }
-          .icon { width: 12px; height: 12px; display: inline-block; vertical-align: -2px; }
-          .store-address { display: block; margin: 6px auto 0; max-width: 250px; }
-          .receipt-meta { border-top: 1px dashed #999; border-bottom: 1px dashed #999; padding: 8px 0; margin-bottom: 8px; }
-          table { width: 100%; border-collapse: collapse; font-size: 12px; }
-          td { padding: 6px 0; border-bottom: 1px dashed #bbb; vertical-align: top; }
-          td:last-child { text-align: right; white-space: nowrap; }
-          .total td { font-weight: bold; border-bottom: 0; }
-          .receipt-note {
-            margin: 14px 0 10px;
-            padding: 0 8px;
-            line-height: 1.35;
-            font-style: italic;
+          @page { size: 58mm ${receiptHeightMm}mm; margin: 0; }
+          * { box-sizing: border-box; }
+          html, body { margin: 0; padding: 0; }
+          body {
+            width: 52mm;
+            margin: 0 auto;
+            padding: 4mm 2mm 2mm;
+            font-family: Arial, sans-serif;
+            color: #111;
           }
-          .thanks { margin-top: 10px; }
-          @media print { button { display: none; } body { width: auto; } }
+          h1 { margin: 0 0 2mm; text-align: center; font-size: 18px; line-height: 1; }
+          p { margin: 0; text-align: center; }
+          .branch { font-size: 12px; font-weight: 700; margin-bottom: 2mm; }
+          .contact { display: flex; justify-content: center; gap: 3mm; font-size: 10px; font-weight: 700; margin-bottom: 2mm; }
+          .address { font-size: 10px; line-height: 1.28; margin-bottom: 2mm; }
+          .divider {
+            margin: 2mm 0;
+            text-align: center;
+            font-family: "Courier New", monospace;
+            font-size: 10px;
+            font-weight: 700;
+            line-height: 1;
+          }
+          .meta { font-size: 11px; font-weight: 700; line-height: 1.3; }
+          .receipt-item { padding: 1mm 0 2mm; }
+          .item-main { display: flex; justify-content: space-between; gap: 2mm; font-size: 11px; font-weight: 700; line-height: 1.25; }
+          .item-main span { text-align: left; overflow-wrap: anywhere; }
+          .item-main strong { white-space: nowrap; text-align: right; }
+          .item-sub { margin-top: 0.5mm; font-size: 10px; font-weight: 700; }
+          .summary-row { display: flex; justify-content: space-between; gap: 2mm; padding: 1.2mm 0; font-size: 12px; font-weight: 700; }
+          .summary-row strong { white-space: nowrap; }
+          .thanks { margin-top: 3mm; font-size: 12px; font-weight: 700; }
+          button { width: 100%; margin-top: 8px; padding: 8px; }
+          @media print {
+            button { display: none; }
+            body { width: 52mm; margin: 0 auto; }
+          }
         </style>
       </head>
       <body>
         <h1>Moncake94</h1>
-        <p class="store-info">
-          ${escapeHtml(transaction.branchName)}<br>
-          <span class="contact-row">
-            <span class="contact-item">
-              <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
-                <path fill="#111" d="M12 2.2c3.2 0 3.6 0 4.9.1 1.2.1 1.9.3 2.3.5.6.2 1 .5 1.5 1s.8.9 1 1.5c.2.4.4 1.1.5 2.3.1 1.3.1 1.7.1 4.9s0 3.6-.1 4.9c-.1 1.2-.3 1.9-.5 2.3-.2.6-.5 1-1 1.5s-.9.8-1.5 1c-.4.2-1.1.4-2.3.5-1.3.1-1.7.1-4.9.1s-3.6 0-4.9-.1c-1.2-.1-1.9-.3-2.3-.5-.6-.2-1-.5-1.5-1s-.8-.9-1-1.5c-.2-.4-.4-1.1-.5-2.3-.1-1.3-.1-1.7-.1-4.9s0-3.6.1-4.9c.1-1.2.3-1.9.5-2.3.2-.6.5-1 1-1.5s.9-.8 1.5-1c.4-.2 1.1-.4 2.3-.5 1.3-.1 1.7-.1 4.9-.1Zm0 1.8c-3.1 0-3.5 0-4.8.1-1.1.1-1.6.2-2 .4-.5.2-.8.4-1.1.7-.4.4-.6.7-.8 1.1-.2.4-.3.9-.4 2-.1 1.3-.1 1.7-.1 4.8s0 3.5.1 4.8c.1 1.1.2 1.6.4 2 .2.5.4.8.8 1.1.4.4.7.6 1.1.8.4.2.9.3 2 .4 1.3.1 1.7.1 4.8.1s3.5 0 4.8-.1c1.1-.1 1.6-.2 2-.4.5-.2.8-.4 1.1-.8.4-.4.6-.7.8-1.1.2-.4.3-.9.4-2 .1-1.3.1-1.7.1-4.8s0-3.5-.1-4.8c-.1-1.1-.2-1.6-.4-2-.2-.5-.4-.8-.8-1.1-.4-.4-.7-.6-1.1-.7-.4-.2-.9-.3-2-.4-1.3-.1-1.7-.1-4.8-.1Zm0 3.2a4.8 4.8 0 1 1 0 9.6 4.8 4.8 0 0 1 0-9.6Zm0 1.8a3 3 0 1 0 0 6.1 3 3 0 0 0 0-6.1Zm5-3.1a1.1 1.1 0 1 1 0 2.2 1.1 1.1 0 0 1 0-2.2Z"/>
-              </svg>
-              ${escapeHtml(STORE_INSTAGRAM)}
-            </span>
-            <span class="contact-item">
-              <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
-                <path fill="#111" d="M20 3.9A10 10 0 0 0 3.4 15.2L2 22l7-1.3A10 10 0 0 0 20 3.9ZM12 20a8 8 0 0 1-4.1-1.1l-.3-.2-4.1.8.8-4-.2-.4A8 8 0 1 1 12 20Zm4.4-5.8c-.2-.1-1.4-.7-1.6-.8-.2-.1-.4-.1-.6.1-.2.3-.6.8-.8.9-.1.2-.3.2-.5.1-1.5-.7-2.5-1.3-3.5-3-.2-.2 0-.4.1-.5l.4-.5c.1-.2.2-.3.3-.5.1-.2 0-.4 0-.5l-.7-1.6c-.2-.4-.4-.4-.6-.4h-.5c-.2 0-.5.1-.7.3-.2.2-.9.9-.9 2.2s.9 2.5 1 2.7c.1.2 1.8 2.8 4.4 3.9.6.3 1.1.4 1.5.5.6.2 1.2.2 1.6.1.5-.1 1.4-.6 1.6-1.1.2-.6.2-1 .2-1.1-.1-.1-.3-.2-.5-.3Z"/>
-              </svg>
-              ${escapeHtml(STORE_PHONE)}
-            </span>
-          </span>
-          <span class="store-address">${escapeHtml(STORE_ADDRESS)}</span>
+        <p class="branch">${escapeHtml(transaction.branchName)}</p>
+        <p class="contact">
+          <span>IG ${escapeHtml(STORE_INSTAGRAM)}</span>
+          <span>WA ${escapeHtml(STORE_PHONE)}</span>
         </p>
-        <p class="receipt-meta">${transaction.receiptNumber}<br>${formatDateTime(transaction.createdAt)}</p>
-        <table>
-          ${rows}
-          <tr class="total"><td>Total</td><td>${formatCurrency(transaction.total)}</td></tr>
-          <tr><td>Tunai</td><td>${formatCurrency(transaction.cash)}</td></tr>
-          <tr><td>Kembalian</td><td>${formatCurrency(transaction.change)}</td></tr>
-        </table>
-        <p class="receipt-note">
-          "Jika makanan ini terasa lezat ucapkanlah Maa Syaa Allah Tabarakallah Karena Hanya Allah SWT yang pantas di puji"
-        </p>
+        <p class="address">${escapeHtml(STORE_ADDRESS)}</p>
+        <div class="divider">--------------------------</div>
+        <p class="meta">${transaction.receiptNumber}<br>${formatDateTime(transaction.createdAt)}</p>
+        <div class="divider">--------------------------</div>
+        ${rows}
+        <div class="divider">--------------------------</div>
+        <div class="summary-row"><span>Total</span><strong>${formatCurrency(transaction.total)}</strong></div>
+        <div class="summary-row"><span>Tunai</span><strong>${formatCurrency(transaction.cash)}</strong></div>
+        <div class="summary-row"><span>Kembalian</span><strong>${formatCurrency(transaction.change)}</strong></div>
+        <div class="divider">--------------------------</div>
         <p class="thanks">Terima kasih</p>
         <button onclick="window.print()">Print</button>
         <script>window.onload = () => window.print();<\/script>
